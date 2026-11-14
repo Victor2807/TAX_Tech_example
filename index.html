@@ -500,6 +500,7 @@
               <label for="c1MasivaNota" class="sr-only">Nota de revisión</label>
               <input id="c1MasivaNota" type="text" maxlength="500" placeholder="Nota para todas (opcional: si la dejas vacía, cada partida conserva la suya)" class="min-w-[18rem] flex-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-900" />
               <button id="c1MasivaOk" type="button" class="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-500 disabled:opacity-60">Marcar como revisadas</button>
+              <button id="c1MasivaQuitar" type="button" class="rounded-lg border border-rose-300 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-60 dark:border-rose-500/40 dark:text-rose-300 dark:hover:bg-rose-500/10" hidden>Quitar revisión</button>
               <button id="c1MasivaNo" type="button" class="text-xs font-medium text-slate-600 hover:underline dark:text-slate-400">Quitar selección</button>
             </div>
             <div class="min-w-0 overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
@@ -1969,7 +1970,7 @@
         var rev = f.revisado_por ? '<div class="text-xs text-emerald-700 dark:text-emerald-400">✓ ' + esc(f.revisado_por) +
           (f.revision_heredada_de ? ' <span class="text-slate-500" title="Revisión conservada del resultado #' + esc(f.revision_heredada_de) + ' de la ejecución anterior: el hallazgo no cambió">· conservada</span>' : '') + '</div>' : '';
         return '<tr data-r="' + f.resultado_id + '">' +
-          (puedeRevisar ? '<td class="px-3 py-3"><input type="checkbox" class="c1-sel h-4 w-4 rounded border-slate-300 accent-brand-600" value="' + f.resultado_id + '" aria-label="Seleccionar partida ' + f.resultado_id + '" /></td>' : '') +
+          (puedeRevisar ? '<td class="px-3 py-3"><input type="checkbox" class="c1-sel h-4 w-4 rounded border-slate-300 accent-brand-600" value="' + f.resultado_id + '"' + (f.revisado_por ? ' data-rev="1"' : '') + ' aria-label="Seleccionar partida ' + f.resultado_id + '" /></td>' : '') +
           COLUMNAS[regla].map(function (c) { return '<td class="px-4 py-3 ' + c[1] + '">' + c[2](f) + '</td>'; }).join('') +
           '<td class="px-4 py-3 text-center text-xs">' + (f.nivel_cruce ? 'N' + f.nivel_cruce : '—') + '</td>' +
           '<td class="px-4 py-3">' + chip(f.estatus) + (f.comentario ? '<div class="mt-1 max-w-[220px] text-xs text-slate-500">' + esc(f.comentario) + '</div>' : '') + '</td>' +
@@ -1982,6 +1983,9 @@
         mostrar($('#c1Masiva'), sel.length > 0);
         $('#c1MasivaN').textContent = sel.length + ' partida' + (sel.length === 1 ? '' : 's') + ' seleccionada' + (sel.length === 1 ? '' : 's');
         $('#c1MasivaOk').textContent = 'Marcar ' + sel.length + ' como revisada' + (sel.length === 1 ? '' : 's');
+        var rev = sel.filter(function (x) { return x.dataset.rev; }).length;
+        mostrar($('#c1MasivaQuitar'), rev > 0);
+        $('#c1MasivaQuitar').textContent = 'Quitar revisión de ' + rev;
         var todos = $('#c1SelTodos');
         if (todos) { todos.checked = total > 0 && sel.length === total; todos.indeterminate = sel.length > 0 && sel.length < total; }
       };
@@ -2007,6 +2011,19 @@
       $$('.c1-sel').forEach(function (x) { x.checked = false; });
       if ($('#c1SelTodos')) { $('#c1SelTodos').checked = false; $('#c1SelTodos').indeterminate = false; }
       mostrar($('#c1Masiva'), false);
+    });
+    $('#c1MasivaQuitar').addEventListener('click', async function () {
+      var ids = $$('.c1-sel').filter(function (x) { return x.checked && x.dataset.rev; }).map(function (x) { return +x.value; });
+      if (!ids.length) return;
+      if (!confirm('¿Quitar la revisión de ' + ids.length + ' partida' + (ids.length === 1 ? '' : 's') + '? Volverán a contar como pendientes en alertas y se recupera el comentario original de la regla.')) return;
+      var b = this; b.disabled = true;
+      try {
+        var r = await api('quitar_revision_varios', { resultado_ids: ids });
+        toast('Revisión quitada de ' + r.quitadas + ' partida' + (r.quitadas === 1 ? '' : 's'));
+        await verResultados();
+        if (alertasDatos) cargarAlertas();
+      } catch (e) { manejarError(e); }
+      finally { b.disabled = false; }
     });
     $('#c1MasivaOk').addEventListener('click', async function () {
       var ids = $$('.c1-sel').filter(function (x) { return x.checked; }).map(function (x) { return +x.value; });
