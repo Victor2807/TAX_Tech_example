@@ -1973,7 +1973,8 @@
       if (regla === 'C10' && ejSel && ejSel.parametros && ejSel.parametros.iva_notas_recibidas != null) {
         totalIva = '<div class="mr-2 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-2 text-sm">' +
           '<span>IVA de notas recibidas <strong class="tabular-nums text-emerald-700 dark:text-emerald-400">$' + fmtMonto(ejSel.parametros.iva_notas_recibidas) + '</strong> <span class="text-slate-500">resta al acreditable</span></span>' +
-          '<span>emitidas <strong class="tabular-nums text-emerald-700 dark:text-emerald-400">$' + fmtMonto(ejSel.parametros.iva_notas_emitidas) + '</strong> <span class="text-slate-500">resta al trasladado</span></span></div>';
+          '<span>emitidas <strong class="tabular-nums text-emerald-700 dark:text-emerald-400">$' + fmtMonto(ejSel.parametros.iva_notas_emitidas) + '</strong> <span class="text-slate-500">resta al trasladado</span></span>' +
+          '<button type="button" id="c10Papel" class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60">Papel de notas de crédito (Excel)</button></div>';
       }
       if (regla === 'C9') {
         var ret = { 'ISR retenido': null, 'IVA retenido': null };
@@ -2006,6 +2007,7 @@
       $$('.c1-revf').forEach(function (b) { b.addEventListener('click', function () { st.revFiltro = b.dataset.rf || null; verResultados(); }); });
       if ($('#c5Papel')) $('#c5Papel').addEventListener('click', generarPapel);
       if ($('#c9Papel')) $('#c9Papel').addEventListener('click', generarPapelRetenciones);
+      if ($('#c10Papel')) $('#c10Papel').addEventListener('click', generarPapelNotas);
       var filas = porEstatus.filter(function (f) { return !st.revFiltro || !REV_FILTROS[st.revFiltro] || REV_FILTROS[st.revFiltro][1](f); });
       st.vista = { regla: regla, ej: ejSel, filas: filas, total: r.filas.length, estatus: st.estatusFiltro, revision: st.revFiltro ? REV_FILTROS[st.revFiltro][0] : null };
       $('#c1Excel').addEventListener('click', exportarResultados);
@@ -2517,6 +2519,95 @@
       } catch (e) { manejarError(e); }
       finally { btn.disabled = false; btn.textContent = 'Exportar a Excel'; }
     });
+
+    /* ---------------- Papel de notas de crédito (C10) ---------------- */
+    async function generarPapelNotas() {
+      var btn = $('#c10Papel');
+      if (btn) { btn.disabled = true; btn.textContent = 'Generando…'; }
+      try {
+        var d = await api('papel_notas_credito', { ejecucion_id: st.ejecucion });
+        await cargarXLSX();
+        var X = window.XLSX, wb = X.utils.book_new(), h = d.encabezado;
+        var n = function (v) { return v == null ? null : Number(v); };
+        var dma = function (v) { return v ? String(v).slice(0, 10).split('-').reverse().join('/') : null; };
+        var desc = function (s) { return T.STATUS && T.STATUS[s] ? T.STATUS[s].d : ''; };
+        var REL = { '01': 'Nota de crédito', '03': 'Devolución', '07': 'Anticipo' };
+        var iva = {}; (d.iva || []).forEach(function (r) { iva[r.tipo] = r; });
+        var rec = iva.Recibida || {}, emi = iva.Emitida || {};
+        var Z = '#,##0.00;[Red]-#,##0.00';
+
+        // 1. Resumen
+        var filasEst = d.por_estatus.map(function (r) { return [r.estatus, desc(r.estatus), r.partidas, n(r.total_notas), n(r.total_erp), n(r.importe_riesgo)]; });
+        var aoa = [
+          ['Papel de trabajo de notas de crédito (CFDI de egreso)'],
+          ['Contribuyente', h.razon_social],
+          ['RFC', h.rfc],
+          ['Periodo', dma(h.periodo_desde) + ' a ' + dma(h.periodo_hasta)],
+          ['Origen', 'Conciliación C10 #' + h.ejecucion_id + ' del ' + fechaHora(h.ejecutado_en) + (h.ejecutado_por ? ' · ' + h.ejecutado_por : '')],
+          [],
+          ['Efecto en el IVA del mes (art. 7 LIVA)', 'Notas', 'Base', 'IVA', 'IVA que aplica', 'Notas que no aplican'],
+          ['Recibidas: disminuyen el IVA acreditable', rec.notas || 0, n(rec.base) || 0, n(rec.iva) || 0, n(rec.iva_aplica) || 0, rec.notas_no_aplican || 0],
+          ['Emitidas: disminuyen el IVA trasladado', emi.notas || 0, n(emi.base) || 0, n(emi.iva) || 0, n(emi.iva_aplica) || 0, emi.notas_no_aplican || 0],
+          [],
+          ['Resultado de C10 por estatus', 'Descripción', 'Partidas', 'Total notas', 'Total ERP', 'Importe en riesgo']
+        ].concat(filasEst);
+        var fT = aoa.length + 1, f0 = 12, f1 = 11 + filasEst.length;
+        aoa.push(['Total', null, null, null, null, null]);
+        aoa.push([], ['Las notas recibidas vigentes siempre disminuyen el acreditable; las emitidas, solo si están relacionadas (01, 03 o 07) con una factura vigente del mismo cliente.'],
+                 ['Herramienta de apoyo: revisa las cifras antes de presentar la declaración.']);
+        var ws = X.utils.aoa_to_sheet(aoa);
+        ['C', 'D', 'E', 'F'].forEach(function (c) {
+          var suma = 0; for (var r = f0; r <= f1; r++) suma += (ws[c + r] && Number(ws[c + r].v)) || 0;
+          ws[c + fT] = { t: 'n', f: 'SUM(' + c + f0 + ':' + c + f1 + ')', v: Math.round(suma * 100) / 100 };
+        });
+        Object.keys(ws).forEach(function (k) {
+          if (k[0] === '!') return;
+          var c = X.utils.decode_cell(k);
+          if (ws[k].t === 'n' && ((c.r >= 7 && c.r <= 8 && c.c >= 2 && c.c <= 4) || (c.r >= f0 - 1 && c.c >= 3 && c.c <= 5))) ws[k].z = Z;
+        });
+        ws['!cols'] = [{ wch: 44 }, { wch: 40 }, { wch: 10 }, { wch: 14 }, { wch: 16 }, { wch: 20 }];
+        X.utils.book_append_sheet(wb, ws, 'Resumen');
+
+        // 2. Notas: todas las partidas de C10
+        X.utils.book_append_sheet(wb, hojaTabla(X, 'Notas de crédito del periodo · C10 #' + h.ejecucion_id,
+          ['Tipo', 'Fecha', 'Serie-folio', 'UUID', 'RFC', 'Nombre', 'Relación', 'Factura', 'UUID factura', 'Total nota', 'IVA nota', 'IVA proporcional',
+           'Doc. ERP', 'Clase', 'Fecha ERP', 'Total ERP', 'Diferencia', 'Nivel', 'Estatus', 'Comentario', 'IVA en pesos', '¿Aplica al IVA?', 'Efecto en el IVA', 'Revisado por', 'Revisado en'],
+          d.detalle.map(function (r) {
+            return [r.tipo, dma(r.fecha), r.serie_folio, r.uuid, r.rfc, r.nombre,
+                    r.tipo_relacion ? r.tipo_relacion + ' · ' + (REL[r.tipo_relacion] || '') : (r.uuid ? 'Sin relación' : null),
+                    r.factura, r.uuid_factura, n(r.total_nota), n(r.iva_nota), n(r.iva_proporcional),
+                    r.doc_erp, r.clase_erp, dma(r.fecha_contab), n(r.total_erp), r.total_erp != null && r.total_nota != null ? n(r.diferencia) : null,
+                    r.nivel_cruce ? 'N' + r.nivel_cruce : null, r.estatus, r.comentario,
+                    n(r.iva_mxn), r.aplica == null ? null : (r.aplica ? 'Sí' : 'No'), r.efecto, r.revisado_por, r.revisado_en ? fechaHora(r.revisado_en) : null];
+          }),
+          { dinero: ['J', 'K', 'L', 'P', 'Q', 'U'], totales: ['J', 'K', 'P', 'U'], anchos: [9, 11, 11, 38, 15, 24, 19, 11, 38, 13, 11, 15, 12, 6, 11, 13, 12, 6, 20, 50, 13, 13, 46, 24, 16],
+            nota: 'IVA proporcional: el que tendría la nota con la tasa efectiva de su factura. Nivel: N1 por UUID, N2 por RFC + importe + fecha.' }), 'Notas');
+
+        // 3. Hallazgos: lo que no está conciliado, con su acción
+        var hz = d.detalle.filter(function (r) { return r.estatus !== 'CONCILIADO'; });
+        var prio = function (r) {
+          return (['RELACION_INVALIDA', 'EXCEDE_SALDO', 'CFDI_CANCELADO', 'PROVEEDOR_69B'].indexOf(r.estatus) > -1 || Number(r.importe_riesgo) >= 10000) ? 'Alta'
+               : Number(r.importe_riesgo) < 100 ? 'Baja' : 'Media';
+        };
+        var orden = { Alta: 1, Media: 2, Baja: 3 };
+        hz.sort(function (a, b) { return orden[prio(a)] - orden[prio(b)] || Number(b.importe_riesgo) - Number(a.importe_riesgo); });
+        X.utils.book_append_sheet(wb, hojaTabla(X, 'Hallazgos de notas de crédito · ' + dma(h.periodo_desde) + ' a ' + dma(h.periodo_hasta),
+          ['Prioridad', 'Estatus', 'Tipo', 'Nota', 'RFC', 'Nombre', 'Factura', 'Doc. ERP', 'Importe en riesgo', 'Hallazgo', 'Acción sugerida', 'Revisado por'],
+          hz.map(function (r) {
+            return [prio(r), r.estatus, r.tipo, r.serie_folio || r.uuid, r.rfc, r.nombre, r.factura, r.doc_erp, n(r.importe_riesgo), r.comentario, r.accion, r.revisado_por];
+          }),
+          { dinero: ['I'], totales: ['I'], anchos: [9, 20, 9, 12, 15, 24, 11, 12, 17, 60, 70, 24],
+            nota: 'Prioridad alta: relación inválida, notas que exceden la factura, canceladas, 69-B o riesgo de 10,000 o más. Importe en riesgo: el total de la nota, la diferencia contra el ERP o, si el IVA no es proporcional, la diferencia de IVA.' }), 'Hallazgos');
+
+        var nombre = 'papel_notas_credito_' + h.rfc + '_' + String(h.periodo_desde).slice(0, 7) + '.xlsx';
+        X.writeFile(wb, nombre);
+        toast('Papel de notas de crédito descargado: ' + nombre);
+      } catch (e) {
+        manejarError(e);
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Papel de notas de crédito (Excel)'; }
+      }
+    }
 
     /* ---------------- Papel de trabajo de retenciones ---------------- */
     async function generarPapelRetenciones() {
