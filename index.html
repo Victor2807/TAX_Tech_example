@@ -494,12 +494,15 @@
                 <button id="c1Ejecutar" type="submit" class="rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-500 disabled:opacity-60">Ejecutar C1</button>
                 <label for="c1Ver" class="text-xs font-medium text-slate-500">Ver ejecución</label>
                 <select id="c1Ver" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></select>
+                <button id="c1Ocultar" type="button" class="rounded-lg border border-slate-300 px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800" title="La ejecución se conserva, pero deja de contar en el comparativo, las alertas y los papeles de trabajo" hidden>Ocultar ejecución</button>
+                <button id="c1VerOcultas" type="button" class="text-xs font-medium text-slate-600 hover:underline dark:text-slate-400" aria-expanded="false" aria-controls="c1Ocultas" hidden></button>
                 <button id="c1Importar" type="button" class="rounded-lg border border-emerald-600/40 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-500/10" title="Sube la hoja Hallazgos de un papel de trabajo con la columna Marcar revisada llena" hidden>Importar revisión (Excel)</button>
                 <input id="c1ImportarArchivo" type="file" accept=".xlsx,.xls" class="sr-only" aria-label="Archivo de Excel con la hoja Hallazgos revisada" tabindex="-1" />
               </div>
               <p id="c1AvisoPeriodo" class="mt-3 flex items-start gap-2 rounded-lg border border-amber-400/50 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200" role="status" hidden></p>
             </form>
             <div id="c1Resumen" class="flex flex-wrap gap-2"></div>
+            <div id="c1Ocultas" class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm dark:border-slate-800 dark:bg-slate-900/50" role="region" aria-label="Ejecuciones ocultas" hidden></div>
             <div id="c1ImpRev" class="rounded-xl border border-emerald-600/40 bg-emerald-500/5 px-4 py-3 text-sm" role="region" aria-label="Importar revisión desde Excel" hidden></div>
             <div id="c1Masiva" class="flex flex-wrap items-center gap-3 rounded-xl border border-brand-500/40 bg-brand-500/5 px-4 py-3 text-sm" hidden>
               <span id="c1MasivaN" class="font-medium"></span>
@@ -1919,6 +1922,11 @@
       if (st.ejecucion && !ej.some(function (e) { return +e.ejecucion_id === +st.ejecucion; })) st.ejecucion = null;
       $('#c1Ver').innerHTML = ej.length ? ej.map(function (e) { return '<option value="' + e.ejecucion_id + '">#' + e.ejecucion_id + ' · ' + esc(e.periodo_desde) + ' a ' + esc(e.periodo_hasta) + ' · ' + esc(fechaHora(e.ejecutado_en)) + '</option>'; }).join('') : '<option value="">Sin ejecuciones</option>';
       if (!st.ejecucion && ej.length) st.ejecucion = ej[0].ejecucion_id;
+      var editorC = st.usuario && st.usuario.rol !== 'LECTOR';
+      mostrar($('#c1Ocultar'), !!(editorC && st.ejecucion));
+      mostrar($('#c1VerOcultas'), Number(r.ocultas) > 0);
+      $('#c1VerOcultas').textContent = 'Ocultas (' + (Number(r.ocultas) || 0) + ')';
+      if (!Number(r.ocultas)) mostrar($('#c1Ocultas'), false);
       if (st.ejecucion) { $('#c1Ver').value = st.ejecucion; verResultados(); }
       else {
         pintarEncabezado(regla); $('#c1Resumen').innerHTML = ''; mostrar($('#c1Masiva'), false);
@@ -2547,6 +2555,57 @@
         toast('Excel descargado: ' + nombre);
       } catch (e) { manejarError(e); }
       finally { btn.disabled = false; btn.textContent = 'Exportar a Excel'; }
+    });
+
+    /* ---------------- Ocultar ejecuciones ---------------- */
+    async function refrescarTrasOcultar() {
+      st.ejecucion = null; st.estatusFiltro = null; st.revFiltro = null;
+      await cargarResumen(); prepararConciliar();
+      if (alertasDatos) cargarAlertas();
+      if (!$('#c1Ocultas').hidden) await pintarOcultas();
+    }
+    $('#c1Ocultar').addEventListener('click', async function () {
+      var id = st.ejecucion; if (!id) return;
+      var e = (st.resumen.ejecuciones || []).filter(function (x) { return +x.ejecucion_id === +id; })[0];
+      var desc = '#' + id + (e ? ' ' + e.regla_codigo + ' del ' + String(e.periodo_desde).split('-').reverse().join('/') + ' al ' + String(e.periodo_hasta).split('-').reverse().join('/') : '');
+      var motivo = prompt('Ocultar la ejecución ' + desc + '.\n\nSe conserva con sus resultados, pero deja de contar en el comparativo, las alertas y los papeles de trabajo. Puedes volver a mostrarla en "Ocultas".\n\nMotivo (opcional):', '');
+      if (motivo === null) return;
+      var b = this; b.disabled = true;
+      try {
+        await api('ocultar_ejecucion', { ejecucion_id: id, ocultar: true, motivo: motivo });
+        toast('Ejecución ' + desc + ' oculta');
+        await refrescarTrasOcultar();
+      } catch (er) { manejarError(er); }
+      finally { b.disabled = false; }
+    });
+    async function pintarOcultas() {
+      var c = $('#c1Ocultas'), lista;
+      try { lista = await api('ejecuciones_ocultas', {}); } catch (e) { return manejarError(e); }
+      var editor = st.usuario && st.usuario.rol !== 'LECTOR';
+      var dma = function (v) { return String(v).slice(0, 10).split('-').reverse().join('/'); };
+      c.innerHTML = '<div class="flex items-center justify-between gap-3"><h4 class="font-semibold text-slate-900 dark:text-white">Ejecuciones ocultas</h4>' +
+        '<button type="button" id="c1OcultasCerrar" class="text-xs font-medium text-slate-600 hover:underline dark:text-slate-400">Cerrar</button></div>' +
+        (lista.length ? '<ul class="mt-2 divide-y divide-slate-200 dark:divide-slate-800">' + lista.map(function (e) {
+          return '<li class="flex flex-wrap items-center gap-x-3 gap-y-1 py-2"><span class="font-mono text-xs font-semibold">#' + e.ejecucion_id + ' ' + esc(e.regla_codigo) + '</span>' +
+            '<span>' + dma(e.periodo_desde) + ' al ' + dma(e.periodo_hasta) + '</span>' +
+            '<span class="text-xs text-slate-500">' + e.total_conciliadas + ' de ' + e.total_partidas + ' conciliadas · oculta por ' + esc(e.oculta_por || '') + ' el ' + esc(fechaHora(e.oculta_en)) + '</span>' +
+            (e.motivo_oculta ? '<span class="basis-full text-xs text-slate-600 dark:text-slate-400">Motivo: ' + esc(e.motivo_oculta) + '</span>' : '') +
+            (editor ? '<button type="button" class="c1-mostrar ml-auto rounded-md border border-slate-300 px-2 py-1 text-xs font-medium hover:bg-white dark:border-slate-700 dark:hover:bg-slate-800" data-ej="' + e.ejecucion_id + '">Volver a mostrar</button>' : '') + '</li>';
+        }).join('') + '</ul>' : '<p class="mt-2 text-xs text-slate-500">No hay ejecuciones ocultas.</p>');
+      mostrar(c, true); $('#c1VerOcultas').setAttribute('aria-expanded', 'true');
+      $('#c1OcultasCerrar').addEventListener('click', function () { mostrar(c, false); $('#c1VerOcultas').setAttribute('aria-expanded', 'false'); });
+      $$('.c1-mostrar').forEach(function (b) { b.addEventListener('click', async function () {
+        b.disabled = true;
+        try {
+          await api('ocultar_ejecucion', { ejecucion_id: +b.dataset.ej, ocultar: false });
+          toast('Ejecución #' + b.dataset.ej + ' visible de nuevo');
+          await refrescarTrasOcultar();
+        } catch (e) { manejarError(e); b.disabled = false; }
+      }); });
+    }
+    $('#c1VerOcultas').addEventListener('click', function () {
+      if (!$('#c1Ocultas').hidden) { mostrar($('#c1Ocultas'), false); this.setAttribute('aria-expanded', 'false'); return; }
+      pintarOcultas();
     });
 
     /* ---------------- Importar revisión desde la hoja Hallazgos ---------------- */
