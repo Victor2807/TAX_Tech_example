@@ -2153,7 +2153,7 @@
       $('#dbAlertasHoy').textContent = 'al ' + String(d.hoy).split('-').reverse().join('/');
       $('#dbAlertasConteo').innerHTML = ['critica', 'alta', 'media', 'info'].filter(function (k) { return Number(r[k]); }).map(function (k) {
         return '<span class="rounded-md px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ' + SEV[k].chip + '">' + SEV[k].n + ' · ' + r[k] + '</span>';
-      }).join('') || '<span class="text-xs text-emerald-700 dark:text-emerald-300">Sin alertas</span>';
+      }).join('') + (Number(r.revisadas) ? '<span class="text-xs text-slate-500">' + r.revisadas + ' revisada' + (r.revisadas > 1 ? 's' : '') + '</span>' : '') || '<span class="text-xs text-emerald-700 dark:text-emerald-300">Sin alertas</span>';
       var vis = alertasTodas ? lista : lista.slice(0, 6);
       $('#dbAlertas').innerHTML = vis.length ? vis.map(function (a) {
         var s = SEV[a.severidad] || SEV.info;
@@ -2162,7 +2162,8 @@
           '<span class="text-xs text-slate-500">' + esc(a.categoria) + '</span>' +
           '<span class="font-medium text-slate-900 dark:text-white">' + esc(a.titulo) + '</span></div>' +
           (a.detalle ? '<p class="mt-1 text-sm text-slate-600 dark:text-slate-400">' + esc(a.detalle) + '</p>' : '') +
-          (a.accion ? '<p class="mt-1 text-xs text-slate-500"><span class="font-medium text-slate-700 dark:text-slate-300">Acción:</span> ' + esc(a.accion) + '</p>' : '') + '</div>' +
+          (a.revisado_por ? '<p class="mt-1 text-xs text-emerald-700 dark:text-emerald-300">Revisada por ' + esc(a.revisado_por) + (a.revisado_en ? ' el ' + esc(fechaHora(a.revisado_en)) : '') + '</p>'
+            : (a.accion ? '<p class="mt-1 text-xs text-slate-500"><span class="font-medium text-slate-700 dark:text-slate-300">Acción:</span> ' + esc(a.accion) + '</p>' : '')) + '</div>' +
           '<div class="shrink-0 text-right">' + plazo(a) + (a.importe != null ? '<div class="mt-1 text-sm font-semibold tabular-nums text-slate-900 dark:text-white">$' + fmtMonto(a.importe) + '</div>' : '') + '</div></li>';
       }).join('') : '<li class="py-3 text-sm text-slate-500">No hay vencimientos próximos ni hallazgos de prioridad alta abiertos.</li>';
       var mas = $('#dbAlertasMas');
