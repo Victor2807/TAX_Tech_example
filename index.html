@@ -1782,11 +1782,13 @@
         totalIva = '<div class="mr-2 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-2 text-sm">' +
           '<span>IVA acreditable <strong class="tabular-nums text-emerald-700 dark:text-emerald-400">$' + fmtMonto(ejSel.parametros.iva_acreditable || 0) + '</strong></span>' +
           (ejSel.parametros.iva_importacion != null ? '<span class="text-slate-500">nacional <strong class="tabular-nums">$' + fmtMonto(ejSel.parametros.iva_nacional || 0) + '</strong> · importación <strong class="tabular-nums">$' + fmtMonto(ejSel.parametros.iva_importacion || 0) + '</strong></span>' : '') +
-          '<span class="text-slate-500">Pendiente por falta de pago <strong class="tabular-nums">$' + fmtMonto(ejSel.parametros.iva_pendiente || 0) + '</strong></span></div>';
+          '<span class="text-slate-500">Pendiente por falta de pago <strong class="tabular-nums">$' + fmtMonto(ejSel.parametros.iva_pendiente || 0) + '</strong></span>' +
+          '<button type="button" id="c5Papel" class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60">Papel de trabajo (Excel)</button></div>';
       }
       $('#c1Resumen').innerHTML = totalIva + '<button type="button" data-s="" class="c1-est rounded-full border px-3 py-1 text-xs ' + (!st.estatusFiltro ? 'border-brand-500 text-brand-700 dark:text-brand-300' : 'border-slate-300 dark:border-slate-700') + '">Todos · ' + r.filas.length + '</button>' +
         Object.keys(cuenta).map(function (s) { return '<button type="button" data-s="' + s + '" class="c1-est inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ' + (st.estatusFiltro === s ? 'border-brand-500' : 'border-transparent') + '">' + chip(s) + '<span class="font-mono text-xs text-slate-500">' + cuenta[s] + '</span></button>'; }).join('');
       $$('.c1-est').forEach(function (b) { b.addEventListener('click', function () { st.estatusFiltro = b.dataset.s || null; verResultados(); }); });
+      if ($('#c5Papel')) $('#c5Papel').addEventListener('click', generarPapel);
       var filas = r.filas.filter(function (f) { return !st.estatusFiltro || f.estatus === st.estatusFiltro; });
       var puedeRevisar = st.usuario && st.usuario.rol !== 'LECTOR';
       $('#c1Body').innerHTML = filas.map(function (f) {
@@ -1810,6 +1812,124 @@
           catch (e) { manejarError(e); }
         });
       }); });
+    }
+
+    /* ---------------- Papel de trabajo de IVA (Excel) ---------------- */
+    var xlsxPromesa = null;
+    function cargarXLSX() {
+      if (window.XLSX) return Promise.resolve();
+      if (!xlsxPromesa) xlsxPromesa = new Promise(function (ok, mal) {
+        var sc = document.createElement('script');
+        sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+        sc.onload = ok; sc.onerror = function () { xlsxPromesa = null; mal(new Error('No se pudo cargar el generador de Excel. Revisa tu conexión.')); };
+        document.head.appendChild(sc);
+      });
+      return xlsxPromesa;
+    }
+
+    // Arma una hoja: título, encabezados, filas, columnas de dinero y fila de totales con SUM()
+    function hojaTabla(X, titulo, encabezados, filas, opts) {
+      opts = opts || {};
+      var aoa = [[titulo], []].concat([encabezados]).concat(filas);
+      var ws = X.utils.aoa_to_sheet(aoa);
+      var primera = 4, ultima = 3 + filas.length;            // filas de datos (base 1)
+      (opts.formulas || []).forEach(function (fx) {          // fórmula por fila, p. ej. F = D - E
+        filas.forEach(function (f, i) {
+          var r = primera + i;
+          ws[fx.col + r] = { t: 'n', f: fx.f.replace(/\{r\}/g, r), v: fx.v(f) };
+        });
+      });
+      if (opts.totales && filas.length) {
+        var fr = ultima + 1;
+        X.utils.sheet_add_aoa(ws, [['Total']], { origin: 'A' + fr });
+        opts.totales.forEach(function (col) {
+          var suma = 0;
+          for (var r = primera; r <= ultima; r++) suma += (ws[col + r] && Number(ws[col + r].v)) || 0;
+          ws[col + fr] = { t: 'n', f: 'SUM(' + col + primera + ':' + col + ultima + ')', v: Math.round(suma * 100) / 100 };
+        });
+        ws['!ref'] = X.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: fr - 1, c: encabezados.length - 1 } });
+      }
+      Object.keys(ws).forEach(function (k) {                 // formato de moneda
+        if (k[0] === '!') return;
+        var c = X.utils.decode_cell(k);
+        if (c.r >= 3 && (opts.dinero || []).indexOf(X.utils.encode_col(c.c)) > -1 && ws[k].t === 'n') ws[k].z = '#,##0.00;[Red]-#,##0.00';
+      });
+      ws['!cols'] = (opts.anchos || []).map(function (w) { return { wch: w }; });
+      if (opts.nota) X.utils.sheet_add_aoa(ws, [[], [opts.nota]], { origin: -1 });
+      return ws;
+    }
+
+    async function generarPapel() {
+      var btn = $('#c5Papel');
+      if (btn) { btn.disabled = true; btn.textContent = 'Generando…'; }
+      try {
+        var d = await api('papel_iva', { ejecucion_id: st.ejecucion });
+        await cargarXLSX();
+        var X = window.XLSX, wb = X.utils.book_new();
+        var h = d.encabezado, dt = d.determinacion, n = function (v) { return v == null ? null : Number(v); };
+        var desc = function (s) { return T.STATUS && T.STATUS[s] ? T.STATUS[s].d : ''; };
+        var saldo = n(dt.iva_trasladado) - n(dt.iva_acreditable_nacional) - n(dt.iva_acreditable_importacion);
+
+        // 1. Determinación
+        var ws = X.utils.aoa_to_sheet([
+          ['Papel de trabajo de IVA mensual · flujo de efectivo (art. 5 LIVA)'],
+          ['Contribuyente', h.razon_social],
+          ['RFC', h.rfc],
+          ['Periodo', h.periodo_desde + ' a ' + h.periodo_hasta],
+          ['Origen', 'Conciliación C5 #' + h.ejecucion_id + ' del ' + String(h.ejecutado_en).slice(0, 16).replace('T', ' ') + (h.ejecutado_por ? ' · ' + h.ejecutado_por : '')],
+          [],
+          ['Concepto', 'Importe'],
+          ['IVA trasladado en CFDI emitidos del periodo *', n(dt.iva_trasladado)],
+          ['(-) IVA acreditable nacional', n(dt.iva_acreditable_nacional)],
+          ['(-) IVA acreditable de importación', n(dt.iva_acreditable_importacion)],
+          ['IVA a cargo (positivo) o a favor (negativo)', saldo],
+          [],
+          ['IVA retenido a enterar', n(dt.iva_retenido)],
+          ['IVA pendiente de acreditar (facturas sin pagar)', n(dt.iva_pendiente)],
+          [],
+          ['* El IVA trasladado se toma de los CFDI de ingreso emitidos y vigentes del periodo; su cobro aún no se confirma contra el banco.'],
+          ['Herramienta de apoyo: revisa las cifras antes de presentar la declaración.'],
+        ]);
+        ws.B11 = { t: 'n', f: 'B8-B9-B10', v: Math.round(saldo * 100) / 100 };
+        ['B8', 'B9', 'B10', 'B11', 'B13', 'B14'].forEach(function (k) { if (ws[k]) ws[k].z = '#,##0.00;[Red]-#,##0.00'; });
+        ws['!cols'] = [{ wch: 52 }, { wch: 48 }];
+        X.utils.book_append_sheet(wb, ws, 'Determinación');
+
+        // 2. IVA acreditable (detalle de C5)
+        X.utils.book_append_sheet(wb, hojaTabla(X, 'Integración del IVA acreditable · ' + h.periodo_desde + ' a ' + h.periodo_hasta,
+          ['Origen', 'RFC / Tax ID', 'Proveedor', 'UUID', 'Pedimento', 'Método', 'Fecha CFDI', 'Fecha de pago', 'Banco', 'Referencia', 'IVA', 'IVA acreditable', 'Estatus', 'Motivo'],
+          d.detalle.map(function (r) { return [r.origen, r.rfc, r.nombre, r.uuid, r.pedimento, r.metodo_pago, r.fecha_cfdi, r.fecha_pago, r.banco, r.referencia, n(r.iva), n(r.acreditable), r.estatus, r.comentario]; }),
+          { dinero: ['K', 'L'], totales: ['K', 'L'], anchos: [12, 15, 26, 38, 18, 8, 12, 13, 13, 12, 14, 15, 20, 60] }), 'IVA acreditable');
+
+        // 3. No acreditable por causa
+        X.utils.book_append_sheet(wb, hojaTabla(X, 'Resumen por estatus',
+          ['Estatus', 'Descripción', 'Partidas', 'IVA', 'IVA acreditable', 'IVA no acreditado'],
+          d.por_estatus.map(function (r) { return [r.estatus, desc(r.estatus), r.partidas, n(r.iva), n(r.acreditable), null]; }),
+          { dinero: ['D', 'E', 'F'], totales: ['C', 'D', 'E', 'F'], anchos: [22, 42, 10, 15, 16, 17],
+            formulas: [{ col: 'F', f: 'D{r}-E{r}', v: function (f) { return Math.round(((f[3] || 0) - (f[4] || 0)) * 100) / 100; } }] }), 'No acreditable');
+
+        // 4. IVA trasladado
+        X.utils.book_append_sheet(wb, hojaTabla(X, 'CFDI emitidos vigentes del periodo',
+          ['Fecha', 'Serie', 'Folio', 'UUID', 'RFC receptor', 'Cliente', 'Método', 'Moneda', 'Total MXN', 'IVA trasladado'],
+          d.trasladado.map(function (r) { return [r.fecha, r.serie, r.folio, r.uuid, r.rfc_receptor, r.nombre, r.metodo_pago, r.moneda, n(r.total_mxn), n(r.iva)]; }),
+          { dinero: ['I', 'J'], totales: ['I', 'J'], anchos: [12, 7, 9, 38, 15, 26, 8, 8, 15, 15],
+            nota: 'El cobro de estos CFDI aún no se confirma contra el banco (conciliación C2 pendiente).' }), 'IVA trasladado');
+
+        // 5. Base DIOT
+        X.utils.book_append_sheet(wb, hojaTabla(X, 'Base para la DIOT · actos pagados en el periodo',
+          ['Tipo de tercero', 'RFC / Tax ID', 'Nombre', 'Valor de actos pagados al 16%', 'IVA acreditable'],
+          d.diot.map(function (r) { return [r.tipo_tercero, r.rfc, r.nombre, n(r.valor_actos_16), n(r.iva_acreditable)]; }),
+          { dinero: ['D', 'E'], totales: ['D', 'E'], anchos: [15, 16, 30, 28, 16],
+            nota: '04 proveedor nacional · 05 proveedor extranjero (importación). Propuesta para preparar la DIOT: revisa el tipo de operación antes de presentarla.' }), 'Base DIOT');
+
+        var nombre = 'papel_trabajo_iva_' + h.rfc + '_' + String(h.periodo_desde).slice(0, 7) + '.xlsx';
+        X.writeFile(wb, nombre);
+        toast('Papel de trabajo descargado: ' + nombre);
+      } catch (e) {
+        manejarError(e);
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Papel de trabajo (Excel)'; }
+      }
     }
 
     /* ---------------- Arranque ---------------- */
