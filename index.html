@@ -494,9 +494,12 @@
                 <button id="c1Ejecutar" type="submit" class="rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-500 disabled:opacity-60">Ejecutar C1</button>
                 <label for="c1Ver" class="text-xs font-medium text-slate-500">Ver ejecución</label>
                 <select id="c1Ver" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></select>
+                <button id="c1Importar" type="button" class="rounded-lg border border-emerald-600/40 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 dark:text-emerald-300 dark:hover:bg-emerald-500/10" title="Sube la hoja Hallazgos de un papel de trabajo con la columna Marcar revisada llena" hidden>Importar revisión (Excel)</button>
+                <input id="c1ImportarArchivo" type="file" accept=".xlsx,.xls" class="sr-only" aria-label="Archivo de Excel con la hoja Hallazgos revisada" tabindex="-1" />
               </div>
             </form>
             <div id="c1Resumen" class="flex flex-wrap gap-2"></div>
+            <div id="c1ImpRev" class="rounded-xl border border-emerald-600/40 bg-emerald-500/5 px-4 py-3 text-sm" role="region" aria-label="Importar revisión desde Excel" hidden></div>
             <div id="c1Masiva" class="flex flex-wrap items-center gap-3 rounded-xl border border-brand-500/40 bg-brand-500/5 px-4 py-3 text-sm" hidden>
               <span id="c1MasivaN" class="font-medium"></span>
               <label for="c1MasivaNota" class="sr-only">Nota de revisión</label>
@@ -2012,6 +2015,7 @@
       st.vista = { regla: regla, ej: ejSel, filas: filas, total: r.filas.length, estatus: st.estatusFiltro, revision: st.revFiltro ? REV_FILTROS[st.revFiltro][0] : null };
       $('#c1Excel').addEventListener('click', exportarResultados);
       var puedeRevisar = st.usuario && st.usuario.rol !== 'LECTOR';
+      mostrar($('#c1Importar'), !!puedeRevisar);
       $('#c1Body').innerHTML = filas.map(function (f) {
         var rev = f.revisado_por ? '<div class="text-xs text-emerald-700 dark:text-emerald-400">✓ ' + esc(f.revisado_por) +
           (f.revision_heredada_de ? ' <span class="text-slate-500" title="Revisión conservada del resultado #' + esc(f.revision_heredada_de) + ' de la ejecución anterior: el hallazgo no cambió">· conservada</span>' : '') + '</div>' : '';
@@ -2297,15 +2301,15 @@
           { dinero: ['I'], totales: ['F', 'G', 'H', 'I'], anchos: [7, 38, 26, 17, 26, 10, 12, 11, 17],
             nota: 'Se toma la última ejecución de cada regla para el mismo periodo. C5 se detalla en las hojas de IVA acreditable. El importe en riesgo es la diferencia de cada partida, o el importe del documento en CFDI cancelados, proveedores 69-B y pagos sin complemento.' }), 'Resumen hallazgos');
         X.utils.book_append_sheet(wb, hojaTabla(X, 'Hallazgos del periodo · partidas no conciliadas',
-          ['Prioridad', 'Regla', 'Estatus', 'Referencia', 'RFC / Tax ID', 'Doc. ERP', 'UUID', 'Pedimento', 'Banco', 'Importe A (ERP)', 'Importe B (fuente)', 'Moneda', 'Importe en riesgo (MXN)', 'Hallazgo', 'Acción sugerida', 'Revisado por', 'Revisado el'],
+          ['ID', 'Prioridad', 'Regla', 'Estatus', 'Referencia', 'RFC / Tax ID', 'Doc. ERP', 'UUID', 'Pedimento', 'Banco', 'Importe A (ERP)', 'Importe B (fuente)', 'Moneda', 'Importe en riesgo (MXN)', 'Hallazgo', 'Acción sugerida', 'Revisado por', 'Revisado el', 'Marcar revisada', 'Nota de revisión'],
           hz.detalle.map(function (r) {
-            return [r.prioridad, r.regla, r.estatus, r.referencia, r.contraparte, r.documento_erp, r.uuid, r.pedimento,
+            return [Number(r.resultado_id), r.prioridad, r.regla, r.estatus, r.referencia, r.contraparte, r.documento_erp, r.uuid, r.pedimento,
                     r.banco ? r.banco + (r.fecha_banco ? ' ' + r.fecha_banco : '') : null,
                     n(r.importe_a), n(r.importe_b), r.moneda || 'MXN', n(r.importe_riesgo), r.comentario, r.accion,
-                    r.revisado_por, r.revisado_en ? fechaHora(r.revisado_en) : null];
+                    r.revisado_por, r.revisado_en ? fechaHora(r.revisado_en) : null, null, null];
           }),
-          { dinero: ['J', 'K', 'M'], totales: ['M'], anchos: [9, 6, 20, 24, 15, 12, 38, 18, 20, 15, 16, 8, 18, 60, 60, 24, 16],
-            nota: 'Prioridad alta: CFDI cancelados, proveedores 69-B, pedimentos sin registro, entero de retenciones o importe en riesgo de 10,000 o más. Importe A y B van en la moneda indicada; el importe en riesgo siempre en pesos (tipo de cambio del pedimento en C8, del documento en C1 y C2). Una misma operación puede aparecer en más de una regla.' }), 'Hallazgos');
+          { dinero: ['K', 'L', 'N'], totales: ['N'], anchos: [8, 9, 6, 20, 24, 15, 12, 38, 18, 20, 15, 16, 8, 18, 60, 60, 24, 16, 16, 40],
+            nota: 'Revisión masiva: escribe Sí en Marcar revisada (y una nota si quieres) y sube este archivo en Conciliar → Importar revisión (Excel). Prioridad alta: CFDI cancelados, proveedores 69-B, pedimentos sin registro, entero de retenciones o importe en riesgo de 10,000 o más. Importe A y B van en la moneda indicada; el importe en riesgo siempre en pesos (tipo de cambio del pedimento en C8, del documento en C1 y C2). Una misma operación puede aparecer en más de una regla.' }), 'Hallazgos');
 
         // Notas de crédito del mes y su efecto en el IVA
         if ((d.notas_credito || []).length) {
@@ -2520,6 +2524,72 @@
       finally { btn.disabled = false; btn.textContent = 'Exportar a Excel'; }
     });
 
+    /* ---------------- Importar revisión desde la hoja Hallazgos ---------------- */
+    var impRev = null;
+    var SI = /^(s[ií]|x|1|true|verdadero|ok)$/i;
+    function leerHallazgos(X, wb) {
+      var items = [], hojas = [];
+      wb.SheetNames.forEach(function (nombre) {
+        var filas = X.utils.sheet_to_json(wb.Sheets[nombre], { header: 1, defval: null, raw: true });
+        var h = -1, cId, cMarca, cNota;
+        for (var i = 0; i < Math.min(filas.length, 15) && h < 0; i++) {
+          var f = (filas[i] || []).map(function (x) { return String(x == null ? '' : x).trim().toLowerCase(); });
+          if (f.indexOf('id') > -1 && f.indexOf('marcar revisada') > -1) { h = i; cId = f.indexOf('id'); cMarca = f.indexOf('marcar revisada'); cNota = f.indexOf('nota de revisión'); }
+        }
+        if (h < 0) return;
+        hojas.push(nombre);
+        filas.slice(h + 1).forEach(function (f) {
+          var id = Number(f[cId]), marca = String(f[cMarca] == null ? '' : f[cMarca]).trim();
+          if (!Number.isInteger(id) || id <= 0 || !SI.test(marca)) return;
+          var nota = cNota > -1 && f[cNota] != null ? String(f[cNota]).trim() : '';
+          items.push({ resultado_id: id, comentario: nota || null });
+        });
+      });
+      return { items: items, hojas: hojas };
+    }
+    function pintarImpRev(r) {
+      var lista = function (arr) {
+        return arr.slice(0, 8).map(function (x) { return '#' + x.resultado_id + ' ' + x.regla + ' ' + x.estatus; }).join(' · ') + (arr.length > 8 ? ' · y ' + (arr.length - 8) + ' más' : '');
+      };
+      var c = $('#c1ImpRev');
+      c.innerHTML = '<div class="flex flex-wrap items-center gap-x-4 gap-y-1"><strong>' + esc(impRev.archivo) + '</strong><span class="text-slate-500">hoja ' + esc(impRev.hojas.join(', ')) + '</span></div>' +
+        '<ul class="mt-2 space-y-1">' +
+        '<li><span class="font-semibold text-emerald-700 dark:text-emerald-300">' + r.marcar.length + '</span> se marcarán como revisadas' + (r.marcar.length ? ' <span class="text-xs text-slate-500">' + esc(lista(r.marcar)) + '</span>' : '') + '</li>' +
+        (r.ya_revisadas.length ? '<li><span class="font-semibold">' + r.ya_revisadas.length + '</span> ya estaban revisadas (no cambian)</li>' : '') +
+        (r.desactualizadas.length ? '<li class="text-amber-700 dark:text-amber-300"><span class="font-semibold">' + r.desactualizadas.length + '</span> son de una ejecución que ya no es la última: vuelve a descargar el papel de trabajo <span class="text-xs">' + esc(lista(r.desactualizadas)) + '</span></li>' : '') +
+        (r.no_encontradas.length ? '<li class="text-rose-700 dark:text-rose-300"><span class="font-semibold">' + r.no_encontradas.length + '</span> ID no existen: ' + esc(r.no_encontradas.slice(0, 10).join(', ')) + '</li>' : '') +
+        '</ul><div class="mt-3 flex flex-wrap gap-3">' +
+        (r.marcar.length ? '<button type="button" id="c1ImpOk" class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60">Marcar ' + r.marcar.length + ' como revisada' + (r.marcar.length === 1 ? '' : 's') + '</button>' : '') +
+        '<button type="button" id="c1ImpNo" class="text-xs font-medium text-slate-600 hover:underline dark:text-slate-400">' + (r.marcar.length ? 'Cancelar' : 'Cerrar') + '</button></div>';
+      mostrar(c, true);
+      $('#c1ImpNo').addEventListener('click', function () { impRev = null; mostrar(c, false); });
+      if ($('#c1ImpOk')) $('#c1ImpOk').addEventListener('click', async function () {
+        var b = this; b.disabled = true;
+        try {
+          var x = await api('importar_revision', { items: impRev.items, confirmar: true, archivo: impRev.archivo });
+          toast(x.marcar.length + ' partida' + (x.marcar.length === 1 ? ' marcada' : 's marcadas') + ' como revisada' + (x.marcar.length === 1 ? '' : 's') + ' desde Excel');
+          impRev = null; mostrar(c, false);
+          if (st.ejecucion) await verResultados();
+          if (alertasDatos) cargarAlertas();
+        } catch (e) { manejarError(e); b.disabled = false; }
+      });
+    }
+    $('#c1Importar').addEventListener('click', function () { $('#c1ImportarArchivo').value = ''; $('#c1ImportarArchivo').click(); });
+    $('#c1ImportarArchivo').addEventListener('change', async function () {
+      var f = this.files && this.files[0];
+      if (!f) return;
+      try {
+        await cargarXLSX();
+        var X = window.XLSX, wb = X.read(await f.arrayBuffer(), { type: 'array' });
+        var h = leerHallazgos(X, wb);
+        if (!h.hojas.length) return toast('El archivo no trae una hoja Hallazgos con las columnas ID y Marcar revisada');
+        if (!h.items.length) return toast('No hay partidas con Sí en la columna Marcar revisada');
+        impRev = { archivo: f.name, hojas: h.hojas, items: h.items };
+        pintarImpRev(await api('importar_revision', { items: h.items, confirmar: false }));
+      } catch (e) { manejarError(e); }
+      finally { this.value = ''; }      // permite volver a subir el mismo archivo corregido
+    });
+
     /* ---------------- Papel de notas de crédito (C10) ---------------- */
     async function generarPapelNotas() {
       var btn = $('#c10Papel');
@@ -2592,12 +2662,12 @@
         var orden = { Alta: 1, Media: 2, Baja: 3 };
         hz.sort(function (a, b) { return orden[prio(a)] - orden[prio(b)] || Number(b.importe_riesgo) - Number(a.importe_riesgo); });
         X.utils.book_append_sheet(wb, hojaTabla(X, 'Hallazgos de notas de crédito · ' + dma(h.periodo_desde) + ' a ' + dma(h.periodo_hasta),
-          ['Prioridad', 'Estatus', 'Tipo', 'Nota', 'RFC', 'Nombre', 'Factura', 'Doc. ERP', 'Importe en riesgo', 'Hallazgo', 'Acción sugerida', 'Revisado por'],
+          ['ID', 'Prioridad', 'Estatus', 'Tipo', 'Nota', 'RFC', 'Nombre', 'Factura', 'Doc. ERP', 'Importe en riesgo', 'Hallazgo', 'Acción sugerida', 'Revisado por', 'Marcar revisada', 'Nota de revisión'],
           hz.map(function (r) {
-            return [prio(r), r.estatus, r.tipo, r.serie_folio || r.uuid, r.rfc, r.nombre, r.factura, r.doc_erp, n(r.importe_riesgo), r.comentario, r.accion, r.revisado_por];
+            return [Number(r.resultado_id), prio(r), r.estatus, r.tipo, r.serie_folio || r.uuid, r.rfc, r.nombre, r.factura, r.doc_erp, n(r.importe_riesgo), r.comentario, r.accion, r.revisado_por, null, null];
           }),
-          { dinero: ['I'], totales: ['I'], anchos: [9, 20, 9, 12, 15, 24, 11, 12, 17, 60, 70, 24],
-            nota: 'Prioridad alta: relación inválida, notas que exceden la factura, canceladas, 69-B o riesgo de 10,000 o más. Importe en riesgo: el total de la nota, la diferencia contra el ERP o, si el IVA no es proporcional, la diferencia de IVA.' }), 'Hallazgos');
+          { dinero: ['J'], totales: ['J'], anchos: [8, 9, 20, 9, 12, 15, 24, 11, 12, 17, 60, 70, 24, 16, 40],
+            nota: 'Revisión masiva: escribe Sí en Marcar revisada (y una nota si quieres) y sube este archivo en Conciliar → Importar revisión (Excel). Prioridad alta: relación inválida, notas que exceden la factura, canceladas, 69-B o riesgo de 10,000 o más. Importe en riesgo: el total de la nota, la diferencia contra el ERP o, si el IVA no es proporcional, la diferencia de IVA.' }), 'Hallazgos');
 
         var nombre = 'papel_notas_credito_' + h.rfc + '_' + String(h.periodo_desde).slice(0, 7) + '.xlsx';
         X.writeFile(wb, nombre);
