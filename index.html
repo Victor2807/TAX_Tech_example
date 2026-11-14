@@ -2751,6 +2751,19 @@
           { dinero: ['D', 'E', 'F'], totales: ['D', 'E', 'F'], anchos: [12, 12, 18, 12, 12, 14, 14, 15, 24],
             nota: 'Un entero después de la fecha límite causa actualización y recargos.' }), 'Enteros');
 
+        // Hallazgos de C9 con ID para marcar la revisión e importarla desde el panel
+        X.utils.book_append_sheet(wb, hojaTabla(X, 'Hallazgos de retenciones · C9 #' + h.ejecucion_id,
+          ['ID', 'Prioridad', 'Estatus', 'Concepto', 'Referencia', 'UUID', 'RFC', 'Proveedor', 'Doc. ERP', 'Importe A (ERP)', 'Importe B (CFDI)', 'Importe en riesgo', 'Hallazgo', 'Acción sugerida', 'Revisado por', 'Revisado el', 'Marcar revisada', 'Nota de revisión'],
+          (d.hallazgos || []).map(function (r) {
+            return [Number(r.resultado_id), r.prioridad, r.estatus, r.concepto, r.referencia, r.uuid, r.rfc, r.nombre, r.doc_erp,
+                    n(r.importe_a), n(r.importe_b), n(r.importe_riesgo), r.comentario, r.accion,
+                    r.revisado_por, r.revisado_en ? fechaHora(r.revisado_en) : null, null, null];
+          }),
+          { dinero: ['J', 'K', 'L'], totales: ['L'], anchos: [8, 9, 20, 18, 12, 38, 15, 28, 12, 15, 15, 16, 50, 60, 24, 16, 16, 40],
+            nota: (d.hallazgos || []).length
+              ? 'Revisión masiva: escribe Sí en Marcar revisada (y una nota si quieres) y sube este archivo en Conciliar → Importar revisión (Excel). Prioridad alta: entero de retenciones o riesgo de 10,000 o más; la retención de una factura sin pagar es informativa.'
+              : 'Sin hallazgos: todas las partidas de C9 están conciliadas.' }), 'Hallazgos');
+
         var nombre = 'papel_trabajo_retenciones_' + h.rfc + '_' + String(h.periodo_desde).slice(0, 7) + '.xlsx';
         X.writeFile(wb, nombre);
         toast('Papel de retenciones descargado: ' + nombre);
