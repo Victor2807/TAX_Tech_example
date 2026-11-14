@@ -1384,7 +1384,7 @@
     }
     var fmtMonto = function (v) { var n = Number(v); return isFinite(n) ? n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : esc(v); };
 
-    var st = { usuario: null, meta: [], resumen: null, tabla: null, filtros: [], buscar: '', orden: null, dir: 'asc', pagina: 0, total: 0, filas: [], ejecucion: null, estatusFiltro: null };
+    var st = { usuario: null, meta: [], resumen: null, tabla: null, filtros: [], buscar: '', orden: null, dir: 'asc', pagina: 0, total: 0, filas: [], ejecucion: null, estatusFiltro: null, revFiltro: null };
 
     // Almacenamiento de la sesión tolerante a navegadores que bloquean localStorage
     var mem = {};
@@ -1488,7 +1488,7 @@
       try { await sb.auth.signOut(); } catch (e) { /* sin red: igual se limpia la vista */ }
       st.usuario = null; st.meta = []; st.resumen = null; st.tabla = null; st.filtros = []; st.buscar = '';
       alertasDatos = null; alertasTodas = false; resumenes = []; mostrar($('#dbResumenes'), false); $('#dbResumenHist').textContent = 'Ver historial'; $('#dbAlertasEmpresa').innerHTML = ''; mostrar($('#dbAlertasCard'), false); mostrar($('#dbAlertasBadge'), false);
-      st.filas = []; st.total = 0; st.pagina = 0; st.ejecucion = null; st.estatusFiltro = null;
+      st.filas = []; st.total = 0; st.pagina = 0; st.ejecucion = null; st.estatusFiltro = null; st.revFiltro = null;
       $('#dbTbody').innerHTML = ''; $('#dbThead').innerHTML = ''; $('#c1Body').innerHTML = ''; $('#c1Resumen').innerHTML = '';
       mostrar($('#dbModal'), false);
       mostrar($('#dbApp'), false); mostrar($('#dbLogin'), true);
@@ -1542,7 +1542,7 @@
       }).join('') : '<p class="text-sm text-slate-500">Aún no hay conciliaciones. Ve a la pestaña Conciliar para ejecutar la primera.</p>';
       $$('.db-ver-ej').forEach(function (b) { b.addEventListener('click', function () {
         if (COLUMNAS[b.dataset.regla]) $('#c1Regla').value = b.dataset.regla;
-        st.ejecucion = +b.dataset.ej; st.estatusFiltro = null; tab('conciliar');
+        st.ejecucion = +b.dataset.ej; st.estatusFiltro = null; st.revFiltro = null; tab('conciliar');
       }); });
 
       $('#dbCargas').innerHTML = st.resumen.cargas.length ? st.resumen.cargas.map(function (c) {
@@ -1908,9 +1908,9 @@
     }
     $('#c1Regla').addEventListener('change', function () {
       $('#c1TolImp').value = ''; $('#c1TolDias').value = '';   // cada regla parte de sus propias tolerancias
-      st.ejecucion = null; st.estatusFiltro = null; prepararConciliar();
+      st.ejecucion = null; st.estatusFiltro = null; st.revFiltro = null; prepararConciliar();
     });
-    $('#c1Ver').addEventListener('change', function () { st.ejecucion = +this.value || null; st.estatusFiltro = null; verResultados(); });
+    $('#c1Ver').addEventListener('change', function () { st.ejecucion = +this.value || null; st.estatusFiltro = null; st.revFiltro = null; verResultados(); });
 
     $('#dbFormC1').addEventListener('submit', async function (ev) {
       ev.preventDefault();
@@ -1920,7 +1920,7 @@
       try {
         var e = await api('ejecutar', { regla: reglaSel(), empresa_id: $('#c1Empresa').value, desde: $('#c1Desde').value, hasta: $('#c1Hasta').value, tolerancia_importe: $('#c1TolImp').value, tolerancia_dias: $('#c1TolDias').value });
         toast('Conciliación #' + e.ejecucion_id + ': ' + e.total_conciliadas + ' de ' + e.total_partidas + ' conciliadas');
-        st.ejecucion = e.ejecucion_id; st.estatusFiltro = null;
+        st.ejecucion = e.ejecucion_id; st.estatusFiltro = null; st.revFiltro = null;
         await cargarResumen(); prepararConciliar();
       } catch (e2) { manejarError(e2); }
       finally { btn.disabled = st.usuario && st.usuario.rol === 'LECTOR'; btn.textContent = textoBoton(); }
@@ -1961,10 +1961,25 @@
       }
       $('#c1Resumen').innerHTML = totalIva + '<button type="button" data-s="" class="c1-est rounded-full border px-3 py-1 text-xs ' + (!st.estatusFiltro ? 'border-brand-500 text-brand-700 dark:text-brand-300' : 'border-slate-300 dark:border-slate-700') + '">Todos · ' + r.filas.length + '</button>' +
         Object.keys(cuenta).map(function (s) { return '<button type="button" data-s="' + s + '" class="c1-est inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ' + (st.estatusFiltro === s ? 'border-brand-500' : 'border-transparent') + '">' + chip(s) + '<span class="font-mono text-xs text-slate-500">' + cuenta[s] + '</span></button>'; }).join('');
+      // Filtro por revisión: se combina con el de estatus y cuenta sobre las partidas de ese estatus
+      var REV_FILTROS = {
+        pendientes: ['Sin revisar', function (f) { return !f.revisado_por; }],
+        revisadas: ['Revisadas', function (f) { return !!f.revisado_por; }],
+        conservadas: ['Conservadas', function (f) { return !!f.revisado_por && !!f.revision_heredada_de; }]
+      };
+      var porEstatus = r.filas.filter(function (f) { return !st.estatusFiltro || f.estatus === st.estatusFiltro; });
+      var botonRev = function (k, txt, n) {
+        var on = (st.revFiltro || '') === k;
+        return '<button type="button" data-rf="' + k + '" aria-pressed="' + on + '" class="c1-revf rounded-full border px-3 py-1 text-xs ' + (on ? 'border-brand-500 text-brand-700 dark:text-brand-300' : 'border-slate-300 dark:border-slate-700') + '">' + txt + (n == null ? '' : ' · <span class="font-mono">' + n + '</span>') + '</button>';
+      };
+      $('#c1Resumen').insertAdjacentHTML('beforeend', '<div id="c1RevFiltro" role="group" aria-label="Filtrar por revisión" class="flex flex-wrap items-center gap-2 sm:ml-auto"><span class="text-xs font-medium text-slate-500">Revisión</span>' +
+        botonRev('', 'Todas', null) +
+        Object.keys(REV_FILTROS).map(function (k) { return botonRev(k, REV_FILTROS[k][0], porEstatus.filter(REV_FILTROS[k][1]).length); }).join('') + '</div>');
       $$('.c1-est').forEach(function (b) { b.addEventListener('click', function () { st.estatusFiltro = b.dataset.s || null; verResultados(); }); });
+      $$('.c1-revf').forEach(function (b) { b.addEventListener('click', function () { st.revFiltro = b.dataset.rf || null; verResultados(); }); });
       if ($('#c5Papel')) $('#c5Papel').addEventListener('click', generarPapel);
       if ($('#c9Papel')) $('#c9Papel').addEventListener('click', generarPapelRetenciones);
-      var filas = r.filas.filter(function (f) { return !st.estatusFiltro || f.estatus === st.estatusFiltro; });
+      var filas = porEstatus.filter(function (f) { return !st.revFiltro || !REV_FILTROS[st.revFiltro] || REV_FILTROS[st.revFiltro][1](f); });
       var puedeRevisar = st.usuario && st.usuario.rol !== 'LECTOR';
       $('#c1Body').innerHTML = filas.map(function (f) {
         var rev = f.revisado_por ? '<div class="text-xs text-emerald-700 dark:text-emerald-400">✓ ' + esc(f.revisado_por) +
