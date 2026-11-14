@@ -406,6 +406,16 @@
               </div>
               <ul id="dbAlertas" class="mt-4 divide-y divide-slate-100 dark:divide-slate-800"></ul>
               <button id="dbAlertasMas" type="button" class="mt-3 text-xs font-medium text-brand-700 hover:underline dark:text-brand-300" hidden></button>
+              <div id="dbResumenSec" class="mt-4 border-t border-slate-200 pt-4 dark:border-slate-800" hidden>
+                <div class="flex flex-wrap items-center gap-3">
+                  <h4 class="text-sm font-semibold text-slate-900 dark:text-white">Resúmenes guardados</h4>
+                  <span id="dbResumenUltimo" class="text-xs text-slate-500"></span>
+                  <button id="dbResumenHist" type="button" class="text-xs font-medium text-brand-700 hover:underline dark:text-brand-300">Ver historial</button>
+                  <button id="dbResumenGenerar" type="button" class="ml-auto rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-medium hover:bg-slate-100 disabled:opacity-60 dark:border-slate-700 dark:hover:bg-slate-800" hidden>Guardar resumen ahora</button>
+                </div>
+                <p class="mt-1 text-xs text-slate-500">Se guardan solos cada lunes a las 7:37 y cada día 14 a las 7:43 (hora de Ciudad de México).</p>
+                <div id="dbResumenes" class="mt-3 overflow-x-auto" hidden></div>
+              </div>
             </div>
             <div id="dbKpis" class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7"></div>
             <div class="grid gap-6 lg:grid-cols-2">
@@ -1455,7 +1465,7 @@
     async function salir() {
       try { await sb.auth.signOut(); } catch (e) { /* sin red: igual se limpia la vista */ }
       st.usuario = null; st.meta = []; st.resumen = null; st.tabla = null; st.filtros = []; st.buscar = '';
-      alertasDatos = null; alertasTodas = false; $('#dbAlertasEmpresa').innerHTML = ''; mostrar($('#dbAlertasCard'), false); mostrar($('#dbAlertasBadge'), false);
+      alertasDatos = null; alertasTodas = false; resumenes = []; mostrar($('#dbResumenes'), false); $('#dbResumenHist').textContent = 'Ver historial'; $('#dbAlertasEmpresa').innerHTML = ''; mostrar($('#dbAlertasCard'), false); mostrar($('#dbAlertasBadge'), false);
       st.filas = []; st.total = 0; st.pagina = 0; st.ejecucion = null; st.estatusFiltro = null;
       $('#dbTbody').innerHTML = ''; $('#dbThead').innerHTML = ''; $('#c1Body').innerHTML = ''; $('#c1Resumen').innerHTML = '';
       mostrar($('#dbModal'), false);
@@ -2144,6 +2154,7 @@
       }
       try { alertasDatos = await api('alertas', { empresa_id: sel.value }); } catch (e) { return manejarError(e); }
       pintarAlertas();
+      cargarResumenes();
     }
     function pintarAlertas() {
       var d = alertasDatos, lista = d.alertas || [], r = d.resumen || {};
@@ -2171,6 +2182,48 @@
       mas.textContent = alertasTodas ? 'Ver menos' : 'Ver todas (' + lista.length + ')';
     }
     $('#dbAlertasMas').addEventListener('click', function () { alertasTodas = !alertasTodas; pintarAlertas(); });
+
+    var resumenes = [];
+    var conteoTxt = function (c) {
+      c = c || {};
+      return ['critica', 'alta', 'media', 'info'].map(function (k) { return (Number(c[k]) || 0) + ' ' + SEV[k].n.toLowerCase(); }).join(' · ') +
+        (Number(c.revisadas) ? ' · ' + c.revisadas + ' revisada' + (c.revisadas > 1 ? 's' : '') : '');
+    };
+    async function cargarResumenes() {
+      var sel = $('#dbAlertasEmpresa');
+      if (!sel.value) return;
+      mostrar($('#dbResumenGenerar'), st.usuario && st.usuario.rol !== 'LECTOR');
+      // Si la API todavía no tiene los resúmenes, la sección se queda oculta sin mostrar error
+      try { resumenes = await api('resumenes_alertas', { empresa_id: sel.value, limite: 12 }); } catch (e) { mostrar($('#dbResumenSec'), false); return; }
+      mostrar($('#dbResumenSec'), true);
+      var u = resumenes[0];
+      $('#dbResumenUltimo').textContent = u ? 'Último: ' + fechaHora(u.generado_en) + ' (' + (u.origen === 'programado' ? 'programado' : 'manual') + ') · ' + conteoTxt(u.conteo) : 'Todavía no hay resúmenes guardados';
+      mostrar($('#dbResumenHist'), resumenes.length > 0);
+      pintarResumenes();
+    }
+    function pintarResumenes() {
+      var lista = function (arr, cls) { return (arr || []).length ? '<ul class="space-y-0.5">' + arr.map(function (t) { return '<li class="' + cls + '">' + esc(t) + '</li>'; }).join('') + '</ul>' : '<span class="text-slate-400">—</span>'; };
+      $('#dbResumenes').innerHTML = '<table class="w-full min-w-[720px] text-left text-xs"><thead class="uppercase tracking-wider text-slate-500"><tr>' +
+        '<th class="py-2 pr-3 font-medium">Generado</th><th class="py-2 pr-3 font-medium">Origen</th><th class="py-2 pr-3 font-medium">Alertas</th>' +
+        '<th class="py-2 pr-3 font-medium">Nuevas</th><th class="py-2 font-medium">Resueltas</th></tr></thead><tbody class="divide-y divide-slate-100 dark:divide-slate-800">' +
+        resumenes.map(function (r) {
+          return '<tr class="align-top"><td class="py-2 pr-3 whitespace-nowrap">' + esc(fechaHora(r.generado_en)) + '<div class="text-slate-500">corte ' + esc(String(r.fecha_corte).split('-').reverse().join('/')) + '</div></td>' +
+            '<td class="py-2 pr-3">' + (r.origen === 'programado' ? 'Programado' : 'Manual' + (r.generado_por ? '<div class="text-slate-500">' + esc(r.generado_por) + '</div>' : '')) + '</td>' +
+            '<td class="py-2 pr-3">' + esc(conteoTxt(r.conteo)) + '</td>' +
+            '<td class="py-2 pr-3">' + lista(r.nuevas, 'text-rose-700 dark:text-rose-300') + '</td>' +
+            '<td class="py-2">' + lista(r.resueltas, 'text-emerald-700 dark:text-emerald-300') + '</td></tr>';
+        }).join('') + '</tbody></table>';
+    }
+    $('#dbResumenHist').addEventListener('click', function () {
+      var c = $('#dbResumenes'); mostrar(c, c.hidden);
+      this.textContent = c.hidden ? 'Ver historial' : 'Ocultar historial';
+    });
+    $('#dbResumenGenerar').addEventListener('click', async function () {
+      var b = this; b.disabled = true;
+      try { await api('generar_resumen_alertas', {}); toast('Resumen de alertas guardado'); await cargarResumenes(); }
+      catch (e) { manejarError(e); }
+      finally { b.disabled = false; }
+    });
     $('#dbAlertasEmpresa').addEventListener('change', cargarAlertas);
 
     /* ---------------- Papel de trabajo de retenciones ---------------- */
