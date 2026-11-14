@@ -192,9 +192,9 @@
         <!-- Stats -->
         <div class="reveal mx-auto mt-20 grid max-w-4xl grid-cols-2 gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 dark:border-slate-800 dark:bg-slate-800 sm:grid-cols-4">
           <div class="bg-white p-6 text-center dark:bg-slate-950"><div class="text-3xl font-bold text-slate-900 dark:text-white"><span data-count="4">0</span></div><div class="mt-1 text-sm text-slate-500">Fuentes integradas</div></div>
-          <div class="bg-white p-6 text-center dark:bg-slate-950"><div class="text-3xl font-bold text-slate-900 dark:text-white"><span data-count="9">0</span></div><div class="mt-1 text-sm text-slate-500">Conciliaciones C1–C9</div></div>
+          <div class="bg-white p-6 text-center dark:bg-slate-950"><div class="text-3xl font-bold text-slate-900 dark:text-white"><span data-count="10">0</span></div><div class="mt-1 text-sm text-slate-500">Conciliaciones C1–C10</div></div>
           <div class="bg-white p-6 text-center dark:bg-slate-950"><div class="text-3xl font-bold text-slate-900 dark:text-white"><span data-count="4">0</span></div><div class="mt-1 text-sm text-slate-500">Niveles de cruce</div></div>
-          <div class="bg-white p-6 text-center dark:bg-slate-950"><div class="text-3xl font-bold text-slate-900 dark:text-white"><span data-count="11">0</span></div><div class="mt-1 text-sm text-slate-500">Estatus de resultado</div></div>
+          <div class="bg-white p-6 text-center dark:bg-slate-950"><div class="text-3xl font-bold text-slate-900 dark:text-white"><span data-count="16">0</span></div><div class="mt-1 text-sm text-slate-500">Estatus de resultado</div></div>
         </div>
       </div>
     </section>
@@ -355,7 +355,7 @@
           <div class="max-w-2xl">
             <p class="text-sm font-semibold uppercase tracking-widest text-brand-600 dark:text-brand-400">Panel de datos</p>
             <h2 class="mt-3 text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">Tus fuentes, conectadas a Supabase</h2>
-            <p class="mt-4 text-slate-600 dark:text-slate-400">Consulta, filtra y corrige los registros cargados, y ejecuta las nueve conciliaciones (C1 a C9) sobre tus datos. Solo entran las cuentas autorizadas.</p>
+            <p class="mt-4 text-slate-600 dark:text-slate-400">Consulta, filtra y corrige los registros cargados, y ejecuta las diez conciliaciones (C1 a C10) sobre tus datos. Solo entran las cuentas autorizadas.</p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <span id="dbEstado" class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:text-slate-300"><span class="h-2 w-2 rounded-full bg-slate-400"></span>Conectando…</span>
@@ -489,6 +489,7 @@
                   <option value="C7">C7 · Pago de pedimentos vs banco</option>
                   <option value="C8">C8 · Facturas de importación vs pedimento</option>
                   <option value="C9">C9 · Retenciones de ISR e IVA vs entero</option>
+                  <option value="C10">C10 · Notas de crédito (CFDI de egreso)</option>
                 </select>
                 <button id="c1Ejecutar" type="submit" class="rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-500 disabled:opacity-60">Ejecutar C1</button>
                 <label for="c1Ver" class="text-xs font-medium text-slate-500">Ver ejecución</label>
@@ -632,7 +633,7 @@
 ├── <span class="text-sky-300">src/</span>
 │   ├── ingestion/      <span class="text-slate-500"># XML CFDI, SAP, MT940/CAMT, Data Stage</span>
 │   ├── normalization/  <span class="text-slate-500"># Modelo de datos común</span>
-│   ├── reconciliation/ <span class="text-slate-500"># Reglas C1–C9</span>
+│   ├── reconciliation/ <span class="text-slate-500"># Reglas C1–C10</span>
 │   └── reporting/      <span class="text-slate-500"># Papeles de trabajo</span>
 ├── <span class="text-sky-300">config/</span>             <span class="text-slate-500"># Tolerancias y mapeos</span>
 ├── <span class="text-sky-300">tests/</span>
@@ -793,6 +794,7 @@
       { id: 'C7', t: 'Pago de pedimentos vs banco', f: ['ds', 'banco'], k: 'Importe de contribuciones (510) + fecha de pago' },
       { id: 'C8', t: 'Facturas de importación vs pedimento', f: ['ds', 'erp'], k: 'Número de factura del proveedor extranjero (505)' },
       { id: 'C9', t: 'Retenciones de ISR e IVA vs entero', f: ['cfdi', 'erp', 'banco'], k: 'UUID + cuentas de retención; entero del mes siguiente' },
+      { id: 'C10', t: 'Notas de crédito vs factura y ERP', f: ['cfdi', 'erp'], k: 'CFDI relacionado 01/03/07; UUID o RFC + importe (KG / DG)' },
     ];
     var FMETA = {
       cfdi: { n: 'CFDI', c: 'bg-sky-500/10 text-sky-700 dark:text-sky-300 ring-sky-500/30' },
@@ -814,6 +816,10 @@
       PAGO_SIN_BANCO: { c: 'bg-yellow-500/15 text-yellow-800 dark:text-yellow-300 ring-yellow-500/30', d: 'Pago sin movimiento bancario que lo confirme' },
       SIN_PAGO: { c: 'bg-slate-500/15 text-slate-700 dark:text-slate-300 ring-slate-500/30', d: 'Factura sin pagar: IVA pendiente' },
       SOLO_PEDIMENTO: { c: 'bg-amber-600/15 text-amber-800 dark:text-amber-200 ring-amber-600/30', d: 'Pedimento sin registro contable' },
+      NOTA_SIN_RELACION: { c: 'bg-pink-500/15 text-pink-700 dark:text-pink-300 ring-pink-500/30', d: 'Nota de crédito sin factura relacionada' },
+      RELACION_INVALIDA: { c: 'bg-rose-600/15 text-rose-800 dark:text-rose-200 ring-rose-600/30', d: 'La factura relacionada no es válida' },
+      EXCEDE_SALDO: { c: 'bg-red-600/15 text-red-800 dark:text-red-200 ring-red-600/30', d: 'Las notas superan el total de la factura' },
+      IVA_NO_PROPORCIONAL: { c: 'bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 ring-indigo-500/30', d: 'IVA de la nota distinto a la tasa de la factura' },
     };
     var chip = function (s) { return '<span class="inline-flex items-center rounded-md px-2 py-0.5 font-mono text-[11px] font-medium ring-1 ring-inset ' + STATUS[s].c + '">' + s + '</span>'; };
 
@@ -1064,7 +1070,7 @@
     $('#flowSources').innerHTML = FUENTES.map(function (f) {
       return '<div class="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900"><span class="h-8 w-8 shrink-0 rounded-lg bg-gradient-to-br ' + f.c + '"></span><span class="text-sm font-semibold text-slate-900 dark:text-white">' + esc(f.n) + '</span></div>';
     }).join('');
-    $('#flowSteps').innerHTML = ['Ingesta y validación', 'Normalización (RFC, fechas, moneda, TC)', 'Modelo de datos común', 'Motor de conciliación C1–C9', 'Cálculo de IVA y retenciones'].map(function (s, i) {
+    $('#flowSteps').innerHTML = ['Ingesta y validación', 'Normalización (RFC, fechas, moneda, TC)', 'Modelo de datos común', 'Motor de conciliación C1–C10', 'Cálculo de IVA y retenciones'].map(function (s, i) {
       return '<li class="flow-step rounded-xl bg-white p-3 text-center shadow-sm transition-all duration-500 dark:bg-slate-900" data-i="' + i + '"><div class="mx-auto grid h-7 w-7 place-items-center rounded-full bg-slate-200 text-xs font-bold text-slate-600 transition-colors duration-500 dark:bg-slate-800 dark:text-slate-300">' + (i + 1) + '</div><div class="mt-2 text-xs font-medium leading-snug text-slate-700 dark:text-slate-300">' + s + '</div></li>';
     }).join('');
     var flowIdx = 0;
@@ -1812,6 +1818,18 @@
         ['Importe ERP', 'text-right', function (f) { return monto(f.importe_a); }],
         ['Importe pedimento', 'text-right', function (f) { return monto(f.importe_b); }],
       ],
+      C10: [
+        ['Nota de crédito', '', function (f) {
+          if (!f.uuid) return '<span class="text-xs text-slate-500">Sin CFDI de egreso</span>';
+          var tipo = f.direccion === 'EMITIDO' ? 'Emitida' : 'Recibida';
+          return mono(f.serie_folio || '') + ' <span class="rounded bg-slate-100 px-1 text-[10px] font-medium dark:bg-slate-800">' + tipo + '</span><div class="font-mono text-[11px] text-slate-500">' + esc(f.uuid) + '</div>';
+        }],
+        ['RFC', '', function (f) { return mono(f.rfc_tercero || (f.direccion === 'EMITIDO' ? f.rfc_receptor : f.rfc_emisor)); }],
+        ['Factura relacionada', '', function (f) { return f.concepto ? mono(f.concepto) : dash; }],
+        ['Doc. ERP', '', function (f) { return f.num_documento ? mono(f.num_documento) + '<div class="text-xs text-slate-500">' + esc(f.fecha_contab || '') + '</div>' : dash; }],
+        ['Importe ERP', 'text-right', function (f) { return monto(f.importe_a); }],
+        ['Importe nota', 'text-right', function (f) { return monto(f.importe_b); }],
+      ],
       C9: [
         ['Concepto', '', function (f) {
           if (f.concepto && f.concepto !== 'Factura') return '<span class="font-medium">Entero de ' + esc(f.concepto) + '</span>';
@@ -1948,8 +1966,14 @@
         totalIva = '<div class="mr-2 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-2 text-sm">' +
           '<span>IVA acreditable <strong class="tabular-nums text-emerald-700 dark:text-emerald-400">$' + fmtMonto(ejSel.parametros.iva_acreditable || 0) + '</strong></span>' +
           (ejSel.parametros.iva_importacion != null ? '<span class="text-slate-500">nacional <strong class="tabular-nums">$' + fmtMonto(ejSel.parametros.iva_nacional || 0) + '</strong> · importación <strong class="tabular-nums">$' + fmtMonto(ejSel.parametros.iva_importacion || 0) + '</strong></span>' : '') +
+          (Number(ejSel.parametros.iva_notas_credito) ? '<span class="text-slate-500">menos notas de crédito recibidas <strong class="tabular-nums">$' + fmtMonto(ejSel.parametros.iva_notas_credito) + '</strong></span>' : '') +
           '<span class="text-slate-500">Pendiente por falta de pago <strong class="tabular-nums">$' + fmtMonto(ejSel.parametros.iva_pendiente || 0) + '</strong></span>' +
           '<button type="button" id="c5Papel" class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60">Papel de trabajo (Excel)</button></div>';
+      }
+      if (regla === 'C10' && ejSel && ejSel.parametros && ejSel.parametros.iva_notas_recibidas != null) {
+        totalIva = '<div class="mr-2 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-2 text-sm">' +
+          '<span>IVA de notas recibidas <strong class="tabular-nums text-emerald-700 dark:text-emerald-400">$' + fmtMonto(ejSel.parametros.iva_notas_recibidas) + '</strong> <span class="text-slate-500">resta al acreditable</span></span>' +
+          '<span>emitidas <strong class="tabular-nums text-emerald-700 dark:text-emerald-400">$' + fmtMonto(ejSel.parametros.iva_notas_emitidas) + '</strong> <span class="text-slate-500">resta al trasladado</span></span></div>';
       }
       if (regla === 'C9') {
         var ret = { 'ISR retenido': null, 'IVA retenido': null };
@@ -2225,7 +2249,8 @@
         var X = window.XLSX, wb = X.utils.book_new();
         var h = d.encabezado, dt = d.determinacion, n = function (v) { return v == null ? null : Number(v); };
         var desc = function (s) { return T.STATUS && T.STATUS[s] ? T.STATUS[s].d : ''; };
-        var saldo = n(dt.iva_trasladado) - n(dt.iva_acreditable_nacional) - n(dt.iva_acreditable_importacion);
+        var ncE = n(dt.iva_notas_emitidas) || 0, ncR = n(dt.iva_notas_recibidas) || 0;
+        var saldo = n(dt.iva_trasladado) - ncE - n(dt.iva_acreditable_nacional) - n(dt.iva_acreditable_importacion) + ncR;
 
         // 1. Determinación
         var ws = X.utils.aoa_to_sheet([
@@ -2237,8 +2262,10 @@
           [],
           ['Concepto', 'Importe'],
           ['IVA trasladado cobrado en el periodo *', n(dt.iva_trasladado)],
+          ['(-) IVA de notas de crédito emitidas **', ncE],
           ['(-) IVA acreditable nacional', n(dt.iva_acreditable_nacional)],
           ['(-) IVA acreditable de importación', n(dt.iva_acreditable_importacion)],
+          ['(+) IVA de notas de crédito recibidas **', ncR],
           ['IVA a cargo (positivo) o a favor (negativo)', saldo],
           [],
           ['IVA retenido a enterar', n(dt.iva_retenido)],
@@ -2247,10 +2274,11 @@
           ['IVA facturado pendiente de cobro', n(dt.iva_trasladado_por_cobrar)],
           [],
           ['* IVA de los CFDI emitidos cuyo cobro confirmó C4 en el banco (PUE) o según los complementos de pago emitidos (PPD).'],
+          ['** CFDI de egreso del mes (art. 7 LIVA): las recibidas vigentes disminuyen el acreditable; las emitidas, solo si están relacionadas con una factura válida. Detalle en la hoja Notas de crédito.'],
           ['Herramienta de apoyo: revisa las cifras antes de presentar la declaración.'],
         ]);
-        ws.B11 = { t: 'n', f: 'B8-B9-B10', v: Math.round(saldo * 100) / 100 };
-        ['B8', 'B9', 'B10', 'B11', 'B13', 'B14', 'B15', 'B16'].forEach(function (k) { if (ws[k]) ws[k].z = '#,##0.00;[Red]-#,##0.00'; });
+        ws.B13 = { t: 'n', f: 'B8-B9-B10-B11+B12', v: Math.round(saldo * 100) / 100 };
+        ['B8', 'B9', 'B10', 'B11', 'B12', 'B13', 'B15', 'B16', 'B17', 'B18'].forEach(function (k) { if (ws[k]) ws[k].z = '#,##0.00;[Red]-#,##0.00'; });
         ws['!cols'] = [{ wch: 52 }, { wch: 48 }];
         X.utils.book_append_sheet(wb, ws, 'Determinación');
 
@@ -2276,6 +2304,19 @@
           }),
           { dinero: ['J', 'K', 'M'], totales: ['M'], anchos: [9, 6, 20, 24, 15, 12, 38, 18, 20, 15, 16, 8, 18, 60, 60, 24, 16],
             nota: 'Prioridad alta: CFDI cancelados, proveedores 69-B, pedimentos sin registro, entero de retenciones o importe en riesgo de 10,000 o más. Importe A y B van en la moneda indicada; el importe en riesgo siempre en pesos (tipo de cambio del pedimento en C8, del documento en C1 y C2). Una misma operación puede aparecer en más de una regla.' }), 'Hallazgos');
+
+        // Notas de crédito del mes y su efecto en el IVA
+        if ((d.notas_credito || []).length) {
+          X.utils.book_append_sheet(wb, hojaTabla(X, 'Notas de crédito (CFDI de egreso) del periodo y su efecto en el IVA',
+            ['Tipo', 'Fecha', 'Serie-folio', 'UUID', 'RFC', 'Nombre', 'Relación', 'Factura relacionada', 'Base', 'IVA', 'Aplica', 'Efecto'],
+            d.notas_credito.map(function (r) {
+              return [r.direccion === 'EMITIDO' ? 'Emitida' : 'Recibida', r.fecha, r.serie_folio, r.uuid, r.rfc, r.nombre,
+                      r.tipo_relacion ? r.tipo_relacion + ' · ' + ({ '01': 'Nota de crédito', '03': 'Devolución', '07': 'Anticipo' }[r.tipo_relacion] || '') : 'Sin relación',
+                      r.factura, n(r.base), n(r.iva), r.aplica ? 'Sí' : 'No', r.efecto];
+            }),
+            { dinero: ['I', 'J'], anchos: [10, 11, 11, 38, 15, 26, 20, 20, 13, 12, 7, 70],
+              nota: 'Ejecuta C10 del periodo para validar la relación de cada nota con su factura y su registro en el ERP.' }), 'Notas de crédito');
+        }
 
         // Comparativo mensual y seguimiento de hallazgos
         hojasComparativo(X, wb, d.comparativo);
@@ -2595,7 +2636,7 @@
         var ancho = Math.round((Number(p.riesgo_abierto) || 0) / maximo * 100);
         var sinCorte = !p.corte;
         return '<tr class="align-middle">' +
-          '<td class="py-2.5 pr-3 font-medium text-slate-900 dark:text-white">' + nombreMes(p.periodo_desde) + '<div class="text-xs font-normal text-slate-500">' + p.reglas_ejecutadas + ' de 9 reglas</div></td>' +
+          '<td class="py-2.5 pr-3 font-medium text-slate-900 dark:text-white">' + nombreMes(p.periodo_desde) + '<div class="text-xs font-normal text-slate-500">' + p.reglas_ejecutadas + ' de 10 reglas</div></td>' +
           '<td class="py-2.5 pr-3 text-xs text-slate-500">' + (sinCorte ? '<span class="text-amber-700 dark:text-amber-300">Sin corte</span>' : esc(fechaHora(p.corte))) + '</td>' +
           '<td class="py-2.5 pr-3 text-right tabular-nums">' + (sinCorte ? dash : p.al_corte + '<div class="text-xs text-slate-500">' + fmtMonto(p.riesgo_al_corte) + '</div>') + '</td>' +
           '<td class="py-2.5 pr-3 text-right tabular-nums text-emerald-700 dark:text-emerald-300">' + (sinCorte ? dash : p.cerrados + '<div class="text-xs">' + fmtMonto(p.riesgo_cerrado) + '</div>') + '</td>' +
