@@ -392,6 +392,7 @@
             <button role="tab" data-tab="resumen" class="db-tab rounded-lg px-4 py-2 text-sm font-medium">Resumen</button>
             <button role="tab" data-tab="explorador" class="db-tab rounded-lg px-4 py-2 text-sm font-medium">Explorador de tablas</button>
             <button role="tab" data-tab="conciliar" class="db-tab rounded-lg px-4 py-2 text-sm font-medium">Conciliar</button>
+            <button role="tab" data-tab="comparativo" class="db-tab rounded-lg px-4 py-2 text-sm font-medium">Comparativo</button>
           </div>
 
           <!-- Resumen -->
@@ -479,6 +480,51 @@
                 <thead id="c1Head" class="bg-slate-100 text-xs uppercase tracking-wider text-slate-600 dark:bg-slate-900 dark:text-slate-300"></thead>
                 <tbody id="c1Body" class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950"></tbody>
               </table>
+            </div>
+          </div>
+
+          <!-- Comparativo mensual de hallazgos -->
+          <div id="tab-comparativo" class="db-panel mt-6 space-y-6" hidden>
+            <div class="flex flex-wrap items-end gap-4 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
+              <div><label for="cmpEmpresa" class="block text-xs font-medium text-slate-500">Empresa</label><select id="cmpEmpresa" class="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></select></div>
+              <div><label for="cmpMeses" class="block text-xs font-medium text-slate-500">Meses</label><select id="cmpMeses" class="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"><option value="3">3</option><option value="6" selected>6</option><option value="12">12</option></select></div>
+              <button id="cmpActualizar" type="button" class="rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-500">Actualizar</button>
+              <p class="basis-full text-xs text-slate-500">Cada mes se compara contra su <strong>corte</strong>: el momento en que se generó por primera vez su papel de trabajo (o se registró a mano). Un hallazgo se identifica por regla, referencia y contraparte. El importe en riesgo va en pesos.</p>
+            </div>
+            <div class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
+              <h3 class="font-semibold text-slate-900 dark:text-white">Evolución por mes</h3>
+              <div class="mt-4 overflow-x-auto"><table class="w-full min-w-[880px] text-left text-sm">
+                <thead class="text-xs uppercase tracking-wider text-slate-500"><tr>
+                  <th class="py-2 pr-3 font-medium">Mes</th><th class="py-2 pr-3 font-medium">Corte</th>
+                  <th class="py-2 pr-3 text-right font-medium">Al corte</th><th class="py-2 pr-3 text-right font-medium">Cerrados</th>
+                  <th class="py-2 pr-3 text-right font-medium">Cambiaron</th><th class="py-2 pr-3 text-right font-medium">Nuevos</th>
+                  <th class="py-2 pr-3 text-right font-medium">Abiertos</th><th class="py-2 pr-3 font-medium">Riesgo abierto (MXN)</th>
+                  <th class="py-2 pr-3 text-right font-medium">Alta</th><th class="py-2 font-medium"></th></tr></thead>
+                <tbody id="cmpMesesBody" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
+              </table></div>
+            </div>
+            <div class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
+              <h3 class="font-semibold text-slate-900 dark:text-white">Hallazgos abiertos por conciliación</h3>
+              <p class="mt-1 text-xs text-slate-500">Abiertos hoy · importe en riesgo · cerrados desde el corte</p>
+              <div class="mt-4 overflow-x-auto"><table class="w-full min-w-[560px] text-left text-sm">
+                <thead id="cmpReglasHead" class="text-xs uppercase tracking-wider text-slate-500"></thead>
+                <tbody id="cmpReglasBody" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
+              </table></div>
+            </div>
+            <div class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
+              <div class="flex flex-wrap items-center gap-3">
+                <h3 class="font-semibold text-slate-900 dark:text-white">Seguimiento de hallazgos</h3>
+                <select id="cmpMes" aria-label="Mes" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></select>
+                <div id="cmpEstados" class="flex flex-wrap gap-2"></div>
+              </div>
+              <div class="mt-4 overflow-x-auto"><table class="w-full min-w-[980px] text-left text-sm">
+                <thead class="text-xs uppercase tracking-wider text-slate-500"><tr>
+                  <th class="py-2 pr-3 font-medium">Estado</th><th class="py-2 pr-3 font-medium">Regla</th><th class="py-2 pr-3 font-medium">Referencia</th>
+                  <th class="py-2 pr-3 font-medium">RFC / Tax ID</th><th class="py-2 pr-3 font-medium">Estatus al corte → hoy</th>
+                  <th class="py-2 pr-3 text-right font-medium">Riesgo al corte</th><th class="py-2 pr-3 text-right font-medium">Riesgo hoy</th>
+                  <th class="py-2 pr-3 font-medium">Prioridad</th><th class="py-2 font-medium">Acción sugerida</th></tr></thead>
+                <tbody id="cmpDetalle" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody>
+              </table></div>
             </div>
           </div>
         </div>
@@ -1420,6 +1466,7 @@
       $$('.db-panel').forEach(function (p) { mostrar(p, p.id === 'tab-' + nombre); });
       if (nombre === 'explorador' && !st.tabla && st.meta.length) elegirTabla(st.meta[0].nombre);
       if (nombre === 'conciliar') prepararConciliar();
+      if (nombre === 'comparativo') cargarComparativo();
     }
     $$('.db-tab').forEach(function (b) { b.addEventListener('click', function () { tab(b.dataset.tab); }); });
 
@@ -1991,6 +2038,28 @@
           { dinero: ['J', 'K', 'M'], totales: ['M'], anchos: [9, 6, 20, 24, 15, 12, 38, 18, 20, 15, 16, 8, 18, 60, 60, 24, 16],
             nota: 'Prioridad alta: CFDI cancelados, proveedores 69-B, pedimentos sin registro, entero de retenciones o importe en riesgo de 10,000 o más. Importe A y B van en la moneda indicada; el importe en riesgo siempre en pesos (tipo de cambio del pedimento en C8, del documento en C1 y C2). Una misma operación puede aparecer en más de una regla.' }), 'Hallazgos');
 
+        // Comparativo mensual y seguimiento de hallazgos
+        var cp = d.comparativo;
+        if (cp && cp.periodos && cp.periodos.length) {
+          X.utils.book_append_sheet(wb, hojaTabla(X, 'Comparativo mensual de hallazgos (al corte de cada mes contra hoy)',
+            ['Mes', 'Corte', 'Hallazgos al corte', 'Riesgo al corte', 'Cerrados', 'Riesgo cerrado', 'Cambiaron de estatus', 'Nuevos', 'Abiertos hoy', 'Riesgo abierto', 'Alta abiertos', 'Revisados'],
+            cp.periodos.map(function (p) {
+              var c = !!p.corte;
+              return [nombreMes(p.periodo_desde), c ? fechaHora(p.corte) : 'Sin corte', c ? p.al_corte : null, c ? n(p.riesgo_al_corte) : null,
+                      c ? p.cerrados : null, c ? n(p.riesgo_cerrado) : null, c ? p.cambiaron : null, c ? p.nuevos : null,
+                      p.abiertos, n(p.riesgo_abierto), p.alta_abiertos, p.revisados];
+            }),
+            { dinero: ['D', 'F', 'J'], anchos: [12, 17, 17, 16, 10, 16, 19, 9, 13, 16, 13, 11],
+              nota: 'Corte: primera vez que se generó el papel de trabajo del mes (o registro manual). Un hallazgo se identifica por regla, referencia y contraparte; importes en pesos.' }), 'Comparativo');
+          X.utils.book_append_sheet(wb, hojaTabla(X, 'Seguimiento de hallazgos por mes',
+            ['Mes', 'Estado', 'Regla', 'Conciliación', 'Referencia', 'RFC / Tax ID', 'Estatus al corte', 'Estatus hoy', 'Riesgo al corte', 'Riesgo hoy', 'Prioridad', 'Acción sugerida', 'Revisado por'],
+            cp.detalle.map(function (r) {
+              return [nombreMes(r.periodo_desde), r.estado, r.regla, r.conciliacion, r.referencia, r.contraparte, r.estatus_corte, r.estatus_hoy,
+                      n(r.riesgo_corte), n(r.riesgo_hoy), r.prioridad, r.estado === 'Cerrado' ? null : r.accion, r.revisado_por];
+            }),
+            { dinero: ['I', 'J'], anchos: [11, 18, 6, 34, 24, 15, 20, 20, 15, 14, 9, 60, 24] }), 'Seguimiento');
+        }
+
         // 2. IVA acreditable (detalle de C5)
         X.utils.book_append_sheet(wb, hojaTabla(X, 'Integración del IVA acreditable · ' + h.periodo_desde + ' a ' + h.periodo_hasta,
           ['Origen', 'RFC / Tax ID', 'Proveedor', 'UUID', 'Pedimento', 'Método', 'Fecha CFDI', 'Fecha de pago', 'Banco', 'Referencia', 'IVA', 'IVA acreditable', 'Estatus', 'Motivo'],
@@ -2027,6 +2096,108 @@
         if (btn) { btn.disabled = false; btn.textContent = 'Papel de trabajo (Excel)'; }
       }
     }
+
+    /* ---------------- Comparativo mensual ---------------- */
+    var ESTADO_CMP = {
+      'Cerrado': 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 ring-emerald-500/30',
+      'Abierto': 'bg-amber-500/15 text-amber-700 dark:text-amber-300 ring-amber-500/30',
+      'Cambió de estatus': 'bg-sky-500/15 text-sky-700 dark:text-sky-300 ring-sky-500/30',
+      'Nuevo': 'bg-rose-500/15 text-rose-700 dark:text-rose-300 ring-rose-500/30',
+      'Sin corte': 'bg-slate-500/15 text-slate-700 dark:text-slate-300 ring-slate-500/30',
+    };
+    var chipEstado = function (e) { return '<span class="inline-flex whitespace-nowrap rounded-md px-2 py-0.5 text-[11px] font-medium ring-1 ring-inset ' + (ESTADO_CMP[e] || ESTADO_CMP['Sin corte']) + '">' + esc(e) + '</span>'; };
+    var nombreMes = function (d) {
+      var t = new Date(String(d).slice(0, 10) + 'T12:00:00');
+      var m = t.toLocaleDateString('es-MX', { month: 'short', year: 'numeric' });
+      return m.charAt(0).toUpperCase() + m.slice(1);
+    };
+    var fechaHora = function (d) { return d ? String(d).slice(0, 16).replace('T', ' ') : ''; };
+    var cmp = { datos: null, mes: null, estado: 'Todos' };
+
+    async function cargarComparativo() {
+      var sel = $('#cmpEmpresa');
+      if (!sel.options.length && st.resumen) {
+        sel.innerHTML = st.resumen.empresas.map(function (e) { return '<option value="' + e.empresa_id + '">' + esc(e.razon_social) + ' · ' + esc(e.rfc) + '</option>'; }).join('');
+      }
+      if (!sel.value) { $('#cmpMesesBody').innerHTML = '<tr><td colspan="10" class="py-6 text-center text-slate-500">Sin empresas cargadas</td></tr>'; return; }
+      $('#cmpMesesBody').innerHTML = '<tr><td colspan="10" class="py-6 text-center text-slate-500">Cargando…</td></tr>';
+      try { cmp.datos = await api('comparativo', { empresa_id: sel.value, meses: $('#cmpMeses').value }); } catch (e) { return manejarError(e); }
+      var per = cmp.datos.periodos;
+      if (!cmp.mes || !per.some(function (p) { return p.periodo_desde === cmp.mes; })) cmp.mes = per.length ? per[per.length - 1].periodo_desde : null;
+      pintarComparativo();
+    }
+
+    function pintarComparativo() {
+      var per = cmp.datos.periodos, editor = st.usuario && st.usuario.rol !== 'LECTOR';
+      var maximo = Math.max.apply(null, per.map(function (p) { return Number(p.riesgo_abierto) || 0; }).concat([1]));
+      $('#cmpMesesBody').innerHTML = per.length ? per.map(function (p) {
+        var ancho = Math.round((Number(p.riesgo_abierto) || 0) / maximo * 100);
+        var sinCorte = !p.corte;
+        return '<tr class="align-middle">' +
+          '<td class="py-2.5 pr-3 font-medium text-slate-900 dark:text-white">' + nombreMes(p.periodo_desde) + '<div class="text-xs font-normal text-slate-500">' + p.reglas_ejecutadas + ' de 9 reglas</div></td>' +
+          '<td class="py-2.5 pr-3 text-xs text-slate-500">' + (sinCorte ? '<span class="text-amber-700 dark:text-amber-300">Sin corte</span>' : esc(fechaHora(p.corte))) + '</td>' +
+          '<td class="py-2.5 pr-3 text-right tabular-nums">' + (sinCorte ? dash : p.al_corte + '<div class="text-xs text-slate-500">' + fmtMonto(p.riesgo_al_corte) + '</div>') + '</td>' +
+          '<td class="py-2.5 pr-3 text-right tabular-nums text-emerald-700 dark:text-emerald-300">' + (sinCorte ? dash : p.cerrados + '<div class="text-xs">' + fmtMonto(p.riesgo_cerrado) + '</div>') + '</td>' +
+          '<td class="py-2.5 pr-3 text-right tabular-nums">' + (sinCorte ? dash : p.cambiaron) + '</td>' +
+          '<td class="py-2.5 pr-3 text-right tabular-nums">' + (sinCorte ? dash : p.nuevos) + '</td>' +
+          '<td class="py-2.5 pr-3 text-right font-semibold tabular-nums">' + p.abiertos + '</td>' +
+          '<td class="py-2.5 pr-3"><div class="flex items-center gap-2"><div class="h-2 w-28 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div class="h-full rounded-full bg-brand-500" style="width:' + ancho + '%"></div></div><span class="tabular-nums">' + fmtMonto(p.riesgo_abierto) + '</span></div></td>' +
+          '<td class="py-2.5 pr-3 text-right tabular-nums">' + p.alta_abiertos + '</td>' +
+          '<td class="py-2.5 text-right">' + (sinCorte && editor ? '<button type="button" class="cmp-corte rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800" data-desde="' + p.periodo_desde + '" data-hasta="' + p.periodo_hasta + '">Registrar corte</button>' : '') + '</td></tr>';
+      }).join('') : '<tr><td colspan="10" class="py-6 text-center text-slate-500">Todavía no hay conciliaciones ejecutadas</td></tr>';
+      $$('.cmp-corte').forEach(function (b) { b.addEventListener('click', function () { registrarCorte(b.dataset.desde, b.dataset.hasta); }); });
+
+      $('#cmpReglasHead').innerHTML = '<tr><th class="py-2 pr-3 font-medium">Conciliación</th>' + per.map(function (p) { return '<th class="py-2 pr-3 text-right font-medium">' + nombreMes(p.periodo_desde) + '</th>'; }).join('') + '</tr>';
+      $('#cmpReglasBody').innerHTML = cmp.datos.por_regla.map(function (r) {
+        return '<tr><td class="py-2 pr-3"><span class="font-mono text-xs font-semibold">' + esc(r.regla) + '</span> <span class="text-slate-600 dark:text-slate-400">' + esc(r.conciliacion) + '</span></td>' +
+          (r.meses || []).map(function (m) {
+            var a = Number(m.abiertos);
+            return '<td class="py-2 pr-3 text-right tabular-nums">' + (a ? '<span class="font-semibold">' + a + '</span> <span class="text-xs text-slate-500">' + fmtMonto(m.riesgo) + '</span>' : '<span class="text-slate-400">0</span>') +
+              (Number(m.cerrados) ? '<div class="text-xs text-emerald-700 dark:text-emerald-300">' + m.cerrados + ' cerrado' + (m.cerrados > 1 ? 's' : '') + '</div>' : '') + '</td>';
+          }).join('') + '</tr>';
+      }).join('');
+
+      $('#cmpMes').innerHTML = per.slice().reverse().map(function (p) { return '<option value="' + p.periodo_desde + '"' + (p.periodo_desde === cmp.mes ? ' selected' : '') + '>' + nombreMes(p.periodo_desde) + '</option>'; }).join('');
+      pintarSeguimiento();
+    }
+
+    function pintarSeguimiento() {
+      var filas = cmp.datos.detalle.filter(function (d) { return String(d.periodo_desde) === cmp.mes; });
+      var cuenta = {};
+      filas.forEach(function (d) { cuenta[d.estado] = (cuenta[d.estado] || 0) + 1; });
+      var estados = ['Todos'].concat(['Abierto', 'Cambió de estatus', 'Nuevo', 'Cerrado', 'Sin corte'].filter(function (e) { return cuenta[e]; }));
+      if (estados.indexOf(cmp.estado) < 0) cmp.estado = 'Todos';
+      $('#cmpEstados').innerHTML = estados.map(function (e) {
+        var on = e === cmp.estado;
+        return '<button type="button" class="cmp-est rounded-full border px-3 py-1 text-xs font-medium ' + (on ? 'border-brand-500 bg-brand-500/10 text-brand-700 dark:text-brand-300' : 'border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800') + '" data-estado="' + esc(e) + '">' + esc(e) + ' · ' + (e === 'Todos' ? filas.length : cuenta[e]) + '</button>';
+      }).join('');
+      $$('.cmp-est').forEach(function (b) { b.addEventListener('click', function () { cmp.estado = b.dataset.estado; pintarSeguimiento(); }); });
+      var vis = filas.filter(function (d) { return cmp.estado === 'Todos' || d.estado === cmp.estado; });
+      $('#cmpDetalle').innerHTML = vis.length ? vis.map(function (d) {
+        var est = (d.estatus_corte ? chip(d.estatus_corte) : '<span class="text-xs text-slate-400">no estaba</span>') + ' <span class="text-slate-400">→</span> ' +
+                  (d.estatus_hoy ? chip(d.estatus_hoy) : '<span class="text-xs text-emerald-700 dark:text-emerald-300">resuelto</span>');
+        return '<tr class="align-top"><td class="py-2.5 pr-3">' + chipEstado(d.estado) + '</td>' +
+          '<td class="py-2.5 pr-3 font-mono text-xs font-semibold">' + esc(d.regla) + '</td>' +
+          '<td class="py-2.5 pr-3">' + mono(d.referencia) + '</td><td class="py-2.5 pr-3">' + mono(d.contraparte) + '</td>' +
+          '<td class="py-2.5 pr-3 whitespace-nowrap">' + est + '</td>' +
+          '<td class="py-2.5 pr-3 text-right">' + monto(d.riesgo_corte) + '</td><td class="py-2.5 pr-3 text-right">' + monto(d.riesgo_hoy) + '</td>' +
+          '<td class="py-2.5 pr-3 text-xs">' + esc(d.prioridad || '') + '</td>' +
+          '<td class="py-2.5 text-xs text-slate-600 dark:text-slate-400">' + (d.estado === 'Cerrado' ? '<span class="text-emerald-700 dark:text-emerald-300">Ya no aparece en la última ejecución</span>' : esc(d.accion || '')) + '</td></tr>';
+      }).join('') : '<tr><td colspan="9" class="py-6 text-center text-slate-500">Sin hallazgos en este mes</td></tr>';
+    }
+
+    async function registrarCorte(desde, hasta) {
+      if (!confirm('¿Registrar ahora el corte de ' + nombreMes(desde) + '? Los hallazgos de ese mes se compararán contra los de este momento.')) return;
+      try {
+        await api('registrar_corte', { empresa_id: $('#cmpEmpresa').value, desde: desde, hasta: hasta, nota: 'Registrado desde el comparativo' });
+        toast('Corte de ' + nombreMes(desde) + ' registrado');
+        cargarComparativo();
+      } catch (e) { manejarError(e); }
+    }
+    $('#cmpActualizar').addEventListener('click', cargarComparativo);
+    $('#cmpEmpresa').addEventListener('change', cargarComparativo);
+    $('#cmpMeses').addEventListener('change', cargarComparativo);
+    $('#cmpMes').addEventListener('change', function () { cmp.mes = this.value; cmp.estado = 'Todos'; pintarSeguimiento(); });
 
     /* ---------------- Arranque ---------------- */
     estado('espera', 'Conectando…');
