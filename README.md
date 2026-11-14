@@ -94,9 +94,7 @@ El objetivo es encontrar diferencias antes de presentar declaraciones, sustentar
 
 Las cuatro fuentes y los resultados de conciliación se guardan en un modelo entidad-relación de 24 tablas (PostgreSQL), organizado en seis dominios: catálogos comunes, CFDI, ERP, bancos, Data Stage y conciliación.
 
-- El DDL (`db/schema.sql`) y su documentación (`docs/modelo-er.md`) se mantienen fuera del repositorio por seguridad (ver `.gitignore`).
-
-![Modelo entidad-relación](docs/modelo-er.png)
+- El DDL (`db/schema.sql`), su documentación y el diagrama (`docs/`) se mantienen fuera del repositorio por seguridad (ver `.gitignore`).
 
 ---
 
@@ -149,7 +147,8 @@ TAX_Tech_example/
 ├── db/
 │   └── schema.sql      # Modelo entidad-relación (local, no se versiona)
 ├── docs/
-│   └── modelo-er.md    # Diagrama ER y explicación (local, no se versiona)
+│   ├── modelo-er.md    # Diagrama ER y explicación (local, no se versiona)
+│   └── modelo-er.png   # Imagen del diagrama (local, no se versiona)
 ├── tests/
 └── README.md
 ```
