@@ -518,6 +518,7 @@
               <div><label for="cmpEmpresa" class="block text-xs font-medium text-slate-500">Empresa</label><select id="cmpEmpresa" class="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></select></div>
               <div><label for="cmpMeses" class="block text-xs font-medium text-slate-500">Meses</label><select id="cmpMeses" class="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"><option value="3">3</option><option value="6" selected>6</option><option value="12">12</option></select></div>
               <button id="cmpActualizar" type="button" class="rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-500">Actualizar</button>
+              <button id="cmpExcel" type="button" class="rounded-xl border border-emerald-600/40 px-5 py-2.5 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-60 dark:text-emerald-300 dark:hover:bg-emerald-500/10">Exportar a Excel</button>
               <p class="basis-full text-xs text-slate-500">Cada mes se compara contra su <strong>corte</strong>: el momento en que se generó por primera vez su papel de trabajo (o se registró a mano). Un hallazgo se identifica por regla, referencia y contraparte. El importe en riesgo va en pesos.</p>
             </div>
             <div class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
@@ -2122,6 +2123,54 @@
       finally { btn.disabled = false; btn.textContent = 'Exportar a Excel'; }
     }
 
+    // Hojas del comparativo mensual: se usan en el papel de trabajo de IVA y en la exportación del comparativo.
+    // opts.titulo agrega la empresa al título; opts.porRegla agrega la hoja de hallazgos abiertos por conciliación.
+    function hojasComparativo(X, wb, cp, opts) {
+      opts = opts || {};
+      if (!cp || !cp.periodos || !cp.periodos.length) return false;
+      var n = function (v) { return v == null ? null : Number(v); };
+      var sufijo = opts.titulo ? ' · ' + opts.titulo : '';
+      X.utils.book_append_sheet(wb, hojaTabla(X, 'Comparativo mensual de hallazgos (al corte de cada mes contra hoy)' + sufijo,
+        ['Mes', 'Corte', 'Hallazgos al corte', 'Riesgo al corte', 'Cerrados', 'Riesgo cerrado', 'Cambiaron de estatus', 'Nuevos', 'Abiertos hoy', 'Riesgo abierto', 'Alta abiertos', 'Revisados'],
+        cp.periodos.map(function (p) {
+          var c = !!p.corte;
+          return [nombreMes(p.periodo_desde), c ? fechaHora(p.corte) : 'Sin corte', c ? p.al_corte : null, c ? n(p.riesgo_al_corte) : null,
+                  c ? p.cerrados : null, c ? n(p.riesgo_cerrado) : null, c ? p.cambiaron : null, c ? p.nuevos : null,
+                  p.abiertos, n(p.riesgo_abierto), p.alta_abiertos, p.revisados];
+        }),
+        { dinero: ['D', 'F', 'J'], anchos: [12, 17, 17, 16, 10, 16, 19, 9, 13, 16, 13, 11],
+          nota: 'Corte: primera vez que se generó el papel de trabajo del mes (o registro manual). Un hallazgo se identifica por regla, referencia y contraparte; importes en pesos.' }), 'Comparativo');
+      if (opts.porRegla && cp.por_regla && cp.por_regla.length) {
+        var enc = ['Regla', 'Conciliación'], dinero = [], totales = [], anchos = [7, 38];
+        cp.periodos.forEach(function (p, i) {
+          var m = nombreMes(p.periodo_desde), base = 2 + i * 3;
+          enc.push(m + ' · abiertos', m + ' · riesgo', m + ' · cerrados');
+          dinero.push(X.utils.encode_col(base + 1));
+          totales.push(X.utils.encode_col(base), X.utils.encode_col(base + 1), X.utils.encode_col(base + 2));
+          anchos.push(16, 16, 16);
+        });
+        X.utils.book_append_sheet(wb, hojaTabla(X, 'Hallazgos abiertos por conciliación' + sufijo, enc,
+          cp.por_regla.map(function (r) {
+            var fila = [r.regla, r.conciliacion];
+            cp.periodos.forEach(function (p, i) {
+              var m = (r.meses || [])[i] || {};
+              fila.push(Number(m.abiertos) || 0, n(m.riesgo) || 0, Number(m.cerrados) || 0);
+            });
+            return fila;
+          }),
+          { dinero: dinero, totales: totales, anchos: anchos,
+            nota: 'Abiertos hoy e importe en riesgo (pesos) de cada mes; cerrados: hallazgos del corte que ya no aparecen en la última ejecución.' }), 'Por conciliación');
+      }
+      X.utils.book_append_sheet(wb, hojaTabla(X, 'Seguimiento de hallazgos por mes' + sufijo,
+        ['Mes', 'Estado', 'Regla', 'Conciliación', 'Referencia', 'RFC / Tax ID', 'Estatus al corte', 'Estatus hoy', 'Riesgo al corte', 'Riesgo hoy', 'Prioridad', 'Acción sugerida', 'Revisado por'],
+        cp.detalle.map(function (r) {
+          return [nombreMes(r.periodo_desde), r.estado, r.regla, r.conciliacion, r.referencia, r.contraparte, r.estatus_corte, r.estatus_hoy,
+                  n(r.riesgo_corte), n(r.riesgo_hoy), r.prioridad, r.estado === 'Cerrado' ? null : r.accion, r.revisado_por];
+        }),
+        { dinero: ['I', 'J'], anchos: [11, 18, 6, 34, 24, 15, 20, 20, 15, 14, 9, 60, 24] }), 'Seguimiento');
+      return true;
+    }
+
     /* ---------------- Papel de trabajo de IVA (Excel) ---------------- */
     var xlsxPromesa = null;
     function cargarXLSX() {
@@ -2229,26 +2278,7 @@
             nota: 'Prioridad alta: CFDI cancelados, proveedores 69-B, pedimentos sin registro, entero de retenciones o importe en riesgo de 10,000 o más. Importe A y B van en la moneda indicada; el importe en riesgo siempre en pesos (tipo de cambio del pedimento en C8, del documento en C1 y C2). Una misma operación puede aparecer en más de una regla.' }), 'Hallazgos');
 
         // Comparativo mensual y seguimiento de hallazgos
-        var cp = d.comparativo;
-        if (cp && cp.periodos && cp.periodos.length) {
-          X.utils.book_append_sheet(wb, hojaTabla(X, 'Comparativo mensual de hallazgos (al corte de cada mes contra hoy)',
-            ['Mes', 'Corte', 'Hallazgos al corte', 'Riesgo al corte', 'Cerrados', 'Riesgo cerrado', 'Cambiaron de estatus', 'Nuevos', 'Abiertos hoy', 'Riesgo abierto', 'Alta abiertos', 'Revisados'],
-            cp.periodos.map(function (p) {
-              var c = !!p.corte;
-              return [nombreMes(p.periodo_desde), c ? fechaHora(p.corte) : 'Sin corte', c ? p.al_corte : null, c ? n(p.riesgo_al_corte) : null,
-                      c ? p.cerrados : null, c ? n(p.riesgo_cerrado) : null, c ? p.cambiaron : null, c ? p.nuevos : null,
-                      p.abiertos, n(p.riesgo_abierto), p.alta_abiertos, p.revisados];
-            }),
-            { dinero: ['D', 'F', 'J'], anchos: [12, 17, 17, 16, 10, 16, 19, 9, 13, 16, 13, 11],
-              nota: 'Corte: primera vez que se generó el papel de trabajo del mes (o registro manual). Un hallazgo se identifica por regla, referencia y contraparte; importes en pesos.' }), 'Comparativo');
-          X.utils.book_append_sheet(wb, hojaTabla(X, 'Seguimiento de hallazgos por mes',
-            ['Mes', 'Estado', 'Regla', 'Conciliación', 'Referencia', 'RFC / Tax ID', 'Estatus al corte', 'Estatus hoy', 'Riesgo al corte', 'Riesgo hoy', 'Prioridad', 'Acción sugerida', 'Revisado por'],
-            cp.detalle.map(function (r) {
-              return [nombreMes(r.periodo_desde), r.estado, r.regla, r.conciliacion, r.referencia, r.contraparte, r.estatus_corte, r.estatus_hoy,
-                      n(r.riesgo_corte), n(r.riesgo_hoy), r.prioridad, r.estado === 'Cerrado' ? null : r.accion, r.revisado_por];
-            }),
-            { dinero: ['I', 'J'], anchos: [11, 18, 6, 34, 24, 15, 20, 20, 15, 14, 9, 60, 24] }), 'Seguimiento');
-        }
+        hojasComparativo(X, wb, d.comparativo);
 
         // 2. IVA acreditable (detalle de C5)
         X.utils.book_append_sheet(wb, hojaTabla(X, 'Integración del IVA acreditable · ' + h.periodo_desde + ' a ' + h.periodo_hasta,
@@ -2626,6 +2656,22 @@
       } catch (e) { manejarError(e); }
     }
     $('#cmpActualizar').addEventListener('click', cargarComparativo);
+    $('#cmpExcel').addEventListener('click', async function () {
+      var btn = this;
+      if (!cmp.datos || !cmp.datos.periodos || !cmp.datos.periodos.length) return toast('Todavía no hay conciliaciones para comparar');
+      btn.disabled = true; btn.textContent = 'Generando…';
+      try {
+        await cargarXLSX();
+        var X = window.XLSX, wb = X.utils.book_new(), sel = $('#cmpEmpresa');
+        var emp = (st.resumen.empresas || []).filter(function (e) { return String(e.empresa_id) === String(sel.value); })[0];
+        var per = cmp.datos.periodos;
+        hojasComparativo(X, wb, cmp.datos, { porRegla: true, titulo: (emp ? emp.razon_social + ' · ' + emp.rfc + ' · ' : '') + 'generado ' + fechaHora(new Date().toISOString()) });
+        var nombre = 'comparativo_' + (emp ? emp.rfc : 'empresa') + '_' + String(per[0].periodo_desde).slice(0, 7) + '_a_' + String(per[per.length - 1].periodo_desde).slice(0, 7) + '.xlsx';
+        X.writeFile(wb, nombre);
+        toast('Excel descargado: ' + nombre);
+      } catch (e) { manejarError(e); }
+      finally { btn.disabled = false; btn.textContent = 'Exportar a Excel'; }
+    });
     $('#cmpEmpresa').addEventListener('change', cargarComparativo);
     $('#cmpMeses').addEventListener('change', cargarComparativo);
     $('#cmpMes').addEventListener('change', function () { cmp.mes = this.value; cmp.estado = 'Todos'; pintarSeguimiento(); });
