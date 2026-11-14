@@ -2,3 +2,7 @@
 db/schema.sql
 docs/modelo-er.md
 docs/modelo-er.png
+# Código que revela la estructura de la base: va en un repo privado aparte
+db/
+scripts/
+supabase/

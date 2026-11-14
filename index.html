@@ -57,6 +57,7 @@
     :root.dark { --bg: #020617; --fg: #e2e8f0; color-scheme: dark; }
     :root:not(.dark) { --bg: #ffffff; --fg: #1e293b; color-scheme: light; }
     body { background: var(--bg); color: var(--fg); }
+    [hidden] { display: none !important; }
     body { font-feature-settings: "cv11", "ss01"; }
     .grid-bg {
       background-image:
@@ -128,6 +129,7 @@
           <a href="#fuentes" class="rounded-lg px-3 py-1.5 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">Fuentes</a>
           <a href="#conciliaciones" class="rounded-lg px-3 py-1.5 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">Conciliaciones</a>
           <a href="#simulador" class="rounded-lg px-3 py-1.5 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">Simulador</a>
+          <a href="#datos" class="rounded-lg px-3 py-1.5 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">Datos</a>
           <a href="#flujo" class="rounded-lg px-3 py-1.5 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">Flujo</a>
           <a href="#entregables" class="rounded-lg px-3 py-1.5 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">Entregables</a>
         </nav>
@@ -147,6 +149,7 @@
         <a href="#fuentes" class="block rounded-lg px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800">Fuentes</a>
         <a href="#conciliaciones" class="block rounded-lg px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800">Conciliaciones</a>
         <a href="#simulador" class="block rounded-lg px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800">Simulador</a>
+        <a href="#datos" class="block rounded-lg px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800">Datos</a>
         <a href="#flujo" class="block rounded-lg px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800">Flujo</a>
         <a href="#entregables" class="block rounded-lg px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800">Entregables</a>
       </div>
@@ -344,6 +347,154 @@
       </div>
     </section>
 
+    <!-- ===================== DATOS (Supabase) ===================== -->
+    <section id="datos" class="relative isolate overflow-hidden py-24">
+      <div class="absolute -left-40 top-20 -z-10 h-96 w-96 rounded-full bg-brand-500/10 blur-3xl" data-speed="0.2"></div>
+      <div class="mx-auto max-w-7xl px-4 sm:px-6">
+        <div class="reveal flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div class="max-w-2xl">
+            <p class="text-sm font-semibold uppercase tracking-widest text-brand-600 dark:text-brand-400">Panel de datos</p>
+            <h2 class="mt-3 text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">Tus fuentes, conectadas a Supabase</h2>
+            <p class="mt-4 text-slate-600 dark:text-slate-400">Consulta, filtra y corrige los registros cargados, y ejecuta la conciliación C1 sobre tus datos. Solo entran las cuentas autorizadas.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <span id="dbEstado" class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:text-slate-300"><span class="h-2 w-2 rounded-full bg-slate-400"></span>Conectando…</span>
+            <span id="dbUsuario" class="text-xs text-slate-500" hidden></span>
+            <button id="dbSalir" type="button" class="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900" hidden>Cerrar sesión</button>
+          </div>
+        </div>
+
+        <!-- Inicio de sesión -->
+        <div id="dbLogin" class="mt-10 grid gap-6 lg:grid-cols-[minmax(0,420px)_1fr]">
+          <form id="dbFormLogin" class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:p-8" novalidate>
+            <h3 class="text-lg font-semibold text-slate-900 dark:text-white">Iniciar sesión</h3>
+            <label for="dbEmail" class="mt-5 block text-sm font-medium text-slate-700 dark:text-slate-300">Correo</label>
+            <input id="dbEmail" type="email" autocomplete="username" required class="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 dark:border-slate-700 dark:bg-slate-900" />
+            <label for="dbPass" class="mt-4 block text-sm font-medium text-slate-700 dark:text-slate-300">Contraseña</label>
+            <input id="dbPass" type="password" autocomplete="current-password" required class="mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/30 dark:border-slate-700 dark:bg-slate-900" />
+            <p id="dbLoginError" class="mt-3 text-sm text-rose-600 dark:text-rose-400" role="alert" hidden></p>
+            <button id="dbEntrar" type="submit" class="mt-5 w-full rounded-xl bg-brand-600 px-4 py-2.5 font-semibold text-white transition hover:bg-brand-500 disabled:opacity-60">Entrar</button>
+          </form>
+          <div class="rounded-2xl border border-dashed border-slate-300 p-6 text-sm leading-relaxed text-slate-600 dark:border-slate-700 dark:text-slate-400 sm:p-8">
+            <h3 class="font-semibold text-slate-900 dark:text-white">Cómo se protege tu información</h3>
+            <ul class="mt-4 space-y-2">
+              <li>• La base de datos no está publicada en la API pública de Supabase. La página consulta una función privada que valida tu sesión en cada petición.</li>
+              <li>• Solo entran correos dados de alta por un administrador, con rol <strong>Lector</strong>, <strong>Editor</strong> o <strong>Admin</strong>.</li>
+              <li>• Cada cambio y cada conciliación queda en la bitácora con tu correo y la fecha.</li>
+            </ul>
+            <p class="mt-4">¿No tienes cuenta? Pide al administrador que te cree un usuario en Supabase y te dé de alta.</p>
+          </div>
+        </div>
+
+        <!-- Aplicación -->
+        <div id="dbApp" class="mt-10" hidden>
+          <div role="tablist" aria-label="Panel de datos" class="flex gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900/60" id="dbTabs">
+            <button role="tab" data-tab="resumen" class="db-tab rounded-lg px-4 py-2 text-sm font-medium">Resumen</button>
+            <button role="tab" data-tab="explorador" class="db-tab rounded-lg px-4 py-2 text-sm font-medium">Explorador de tablas</button>
+            <button role="tab" data-tab="conciliar" class="db-tab rounded-lg px-4 py-2 text-sm font-medium">Conciliar</button>
+          </div>
+
+          <!-- Resumen -->
+          <div id="tab-resumen" class="db-panel mt-6 space-y-6">
+            <div id="dbKpis" class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7"></div>
+            <div class="grid gap-6 lg:grid-cols-2">
+              <div class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
+                <h3 class="font-semibold text-slate-900 dark:text-white">Últimas conciliaciones</h3>
+                <div id="dbEjecuciones" class="mt-4 space-y-3"></div>
+              </div>
+              <div class="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950">
+                <h3 class="font-semibold text-slate-900 dark:text-white">Últimas cargas</h3>
+                <div class="mt-4 overflow-x-auto"><table class="w-full min-w-[480px] text-left text-sm"><thead class="text-xs uppercase tracking-wider text-slate-500"><tr><th class="py-2 pr-3 font-medium">Fuente</th><th class="py-2 pr-3 font-medium">Archivo</th><th class="py-2 pr-3 text-right font-medium">Registros</th><th class="py-2 font-medium">Cargado</th></tr></thead><tbody id="dbCargas" class="divide-y divide-slate-100 dark:divide-slate-800"></tbody></table></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Explorador -->
+          <div id="tab-explorador" class="db-panel mt-6" hidden>
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <label for="dbTabla" class="sr-only">Tabla</label>
+              <select id="dbTabla" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></select>
+              <label for="dbBuscar" class="sr-only">Buscar</label>
+              <input id="dbBuscar" type="search" placeholder="Buscar en campos de texto (RFC, UUID, referencia…)" class="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" />
+              <div class="flex gap-2">
+                <button id="dbNuevo" type="button" class="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-500" hidden>Nuevo registro</button>
+                <button id="dbCsv" type="button" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900">Exportar CSV</button>
+                <button id="dbRecargar" type="button" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900">Actualizar</button>
+              </div>
+            </div>
+            <form id="dbFiltroForm" class="mt-3 flex flex-wrap items-center gap-2 text-sm">
+              <label for="dbFCol" class="sr-only">Columna</label>
+              <select id="dbFCol" class="rounded-lg border border-slate-300 bg-white px-2 py-1.5 dark:border-slate-700 dark:bg-slate-900"></select>
+              <label for="dbFOp" class="sr-only">Condición</label>
+              <select id="dbFOp" class="rounded-lg border border-slate-300 bg-white px-2 py-1.5 dark:border-slate-700 dark:bg-slate-900">
+                <option value="eq">es igual a</option><option value="neq">es distinto de</option><option value="contiene">contiene</option><option value="empieza">empieza con</option>
+                <option value="gt">mayor que</option><option value="gte">mayor o igual</option><option value="lt">menor que</option><option value="lte">menor o igual</option>
+                <option value="es_nulo">está vacío</option><option value="no_nulo">no está vacío</option>
+              </select>
+              <label for="dbFVal" class="sr-only">Valor</label>
+              <input id="dbFVal" placeholder="valor" class="w-40 rounded-lg border border-slate-300 bg-white px-2 py-1.5 dark:border-slate-700 dark:bg-slate-900" />
+              <button type="submit" class="rounded-lg border border-slate-300 px-3 py-1.5 font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900">Agregar filtro</button>
+              <div id="dbFiltros" class="flex flex-wrap gap-2"></div>
+            </form>
+            <div class="mt-4 min-w-0 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
+              <div class="max-h-[560px] overflow-auto">
+                <table class="w-full text-left text-xs"><thead id="dbThead" class="sticky top-0 bg-slate-100 text-slate-600 dark:bg-slate-900 dark:text-slate-300"></thead><tbody id="dbTbody" class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950"></tbody></table>
+              </div>
+              <div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+                <span id="dbPaginaInfo"></span>
+                <div class="flex gap-2"><button id="dbPrev" type="button" class="rounded-md border border-slate-300 px-2.5 py-1 disabled:opacity-40 dark:border-slate-700">Anterior</button><button id="dbNext" type="button" class="rounded-md border border-slate-300 px-2.5 py-1 disabled:opacity-40 dark:border-slate-700">Siguiente</button></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Conciliar -->
+          <div id="tab-conciliar" class="db-panel mt-6 space-y-6" hidden>
+            <form id="dbFormC1" class="grid gap-4 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950 sm:grid-cols-2 lg:grid-cols-6 lg:items-end">
+              <div class="sm:col-span-2"><label for="c1Empresa" class="block text-xs font-medium text-slate-500">Empresa</label><select id="c1Empresa" required class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></select></div>
+              <div><label for="c1Desde" class="block text-xs font-medium text-slate-500">Desde</label><input id="c1Desde" type="date" required class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" /></div>
+              <div><label for="c1Hasta" class="block text-xs font-medium text-slate-500">Hasta</label><input id="c1Hasta" type="date" required class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" /></div>
+              <div><label for="c1TolImp" class="block text-xs font-medium text-slate-500">Tolerancia importe (MXN)</label><input id="c1TolImp" inputmode="decimal" class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" /></div>
+              <div><label for="c1TolDias" class="block text-xs font-medium text-slate-500">Tolerancia (días)</label><input id="c1TolDias" inputmode="numeric" class="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" /></div>
+              <div class="flex flex-wrap items-center gap-3 sm:col-span-2 lg:col-span-6">
+                <button id="c1Ejecutar" type="submit" class="rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-brand-500 disabled:opacity-60">Ejecutar C1 · CFDI recibidos vs cuentas por pagar</button>
+                <label for="c1Ver" class="text-xs font-medium text-slate-500">Ver ejecución</label>
+                <select id="c1Ver" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></select>
+              </div>
+            </form>
+            <div id="c1Resumen" class="flex flex-wrap gap-2"></div>
+            <div class="min-w-0 overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
+              <table class="w-full min-w-[920px] text-left text-sm">
+                <thead class="bg-slate-100 text-xs uppercase tracking-wider text-slate-600 dark:bg-slate-900 dark:text-slate-300"><tr>
+                  <th class="px-4 py-3 font-medium">Doc. ERP</th><th class="px-4 py-3 font-medium">UUID</th><th class="px-4 py-3 font-medium">RFC emisor</th>
+                  <th class="px-4 py-3 text-right font-medium">Importe ERP</th><th class="px-4 py-3 text-right font-medium">Importe CFDI</th><th class="px-4 py-3 text-center font-medium">Nivel</th>
+                  <th class="px-4 py-3 font-medium">Estatus</th><th class="px-4 py-3 font-medium">Revisión</th></tr></thead>
+                <tbody id="c1Body" class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Editor de registro -->
+      <div id="dbModal" class="fixed inset-0 z-[60] flex items-end justify-center bg-slate-950/60 p-4 backdrop-blur-sm sm:items-center" hidden>
+        <div class="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-900" role="dialog" aria-modal="true" aria-labelledby="dbModalTitulo">
+          <div class="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-800">
+            <h3 id="dbModalTitulo" class="font-semibold text-slate-900 dark:text-white"></h3>
+            <button id="dbModalCerrar" type="button" aria-label="Cerrar" class="grid h-8 w-8 place-items-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">✕</button>
+          </div>
+          <form id="dbModalForm" class="grid flex-1 gap-4 overflow-y-auto px-5 py-4 sm:grid-cols-2" novalidate></form>
+          <p id="dbModalError" class="px-5 text-sm text-rose-600 dark:text-rose-400" role="alert" hidden></p>
+          <div class="flex items-center justify-between gap-2 border-t border-slate-200 px-5 py-4 dark:border-slate-800">
+            <button id="dbEliminar" type="button" class="rounded-lg border border-rose-300 px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50 dark:border-rose-800 dark:text-rose-300 dark:hover:bg-rose-950" hidden>Eliminar</button>
+            <div class="ml-auto flex gap-2">
+              <button id="dbCancelar" type="button" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800">Cancelar</button>
+              <button id="dbGuardar" type="submit" form="dbModalForm" class="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-500 disabled:opacity-60">Guardar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- ===================== FLUJO ===================== -->
     <section id="flujo" class="relative isolate overflow-hidden py-24">
       <div class="absolute left-1/2 top-1/3 -z-10 h-96 w-[700px] -translate-x-1/2 rounded-full bg-brand-500/10 blur-3xl" data-speed="0.25"></div>
@@ -480,7 +631,7 @@
     $$('#mobileMenu a').forEach(function (a) { a.addEventListener('click', function () { $('#mobileMenu').classList.add('hidden'); }); });
 
     // Resaltado de sección activa
-    var sections = ['objetivos', 'fuentes', 'conciliaciones', 'simulador', 'flujo', 'entregables'];
+    var sections = ['objetivos', 'fuentes', 'conciliaciones', 'simulador', 'datos', 'flujo', 'entregables'];
     var spy = new IntersectionObserver(function (entries) {
       entries.forEach(function (e) {
         if (!e.isIntersecting) return;
@@ -1107,6 +1258,489 @@
       clearTimeout(toastTimer);
       toastTimer = setTimeout(function () { t.classList.add('opacity-0', 'translate-y-4'); }, 2200);
     }
+    window.TAXTECH = { chip: chip, STATUS: STATUS, toast: toast };
+  })();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+  <script>
+  /* ================= Panel de datos · Supabase ================= */
+  (function () {
+    'use strict';
+    // La clave anon es pública por diseño: no da acceso a la base. Los datos
+    // solo se sirven a través de la función privada, que exige sesión y alta.
+    var CFG = {
+      url: 'https://cxiaekahjzxznrohhiul.supabase.co',
+      key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN4aWFla2Foanp4em5yb2hoaXVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ2MTk5MzUsImV4cCI6MjExMDE5NTkzNX0.dfdoYL_FrEXjFaNl0QDBQRBxEJsq6Vs33pywXc88jiM',
+      fn: '/functions/v1/conciliacion-api',
+      porPagina: 25,
+    };
+    var $ = function (s, r) { return (r || document).querySelector(s); };
+    var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+    var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+    var T = window.TAXTECH || {};
+    var toast = T.toast || function () {};
+    var chip = T.chip || function (s) { return esc(s); };
+    var MONTO = /(importe|total|monto|saldo|valor|diferencia|subtotal|base|descuento|iva)/;
+    var fmtMonto = function (v) { var n = Number(v); return isFinite(n) ? n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : esc(v); };
+
+    var st = { usuario: null, meta: [], resumen: null, tabla: null, filtros: [], buscar: '', orden: null, dir: 'asc', pagina: 0, total: 0, filas: [], ejecucion: null, estatusFiltro: null };
+
+    // Almacenamiento de la sesión tolerante a navegadores que bloquean localStorage
+    var mem = {};
+    var almacen = {
+      getItem: function (k) { try { return localStorage.getItem(k); } catch (e) { return mem[k] || null; } },
+      setItem: function (k, v) { try { localStorage.setItem(k, v); } catch (e) { mem[k] = v; } },
+      removeItem: function (k) { try { localStorage.removeItem(k); } catch (e) { delete mem[k]; } },
+    };
+
+    function estado(tipo, texto) {
+      var color = { ok: 'bg-emerald-500', error: 'bg-rose-500', espera: 'bg-amber-400 animate-pulse', neutro: 'bg-slate-400' }[tipo];
+      $('#dbEstado').innerHTML = '<span class="h-2 w-2 rounded-full ' + color + '"></span>' + esc(texto);
+    }
+    function mostrar(el, si) { el.hidden = !si; }
+    function errorLogin(msg) { var e = $('#dbLoginError'); e.textContent = msg || ''; mostrar(e, !!msg); }
+
+    if (!window.supabase || !window.supabase.createClient) {
+      estado('error', 'Sin conexión con Supabase');
+      errorLogin('No se pudo cargar el cliente de Supabase. Abre la página con conexión a internet.');
+      $('#dbEntrar').disabled = true;
+      return;
+    }
+    document.body.appendChild($('#dbModal')); // fuera de la sección para quedar sobre la barra de navegación
+    var sb = window.supabase.createClient(CFG.url, CFG.key, {
+      auth: { storage: almacen, persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
+    });
+
+    async function api(accion, cuerpo) {
+      var ses = (await sb.auth.getSession()).data.session;
+      if (!ses) { var e0 = new Error('Inicia sesión para continuar.'); e0.status = 401; throw e0; }
+      var r;
+      try {
+        r = await fetch(CFG.url + CFG.fn, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + ses.access_token, apikey: CFG.key },
+          body: JSON.stringify(Object.assign({ accion: accion }, cuerpo || {})),
+        });
+      } catch (e) {
+        var e1 = new Error('No se pudo conectar con Supabase. Revisa tu conexión.'); e1.status = 0; throw e1;
+      }
+      var j = await r.json().catch(function () { return {}; });
+      if (!r.ok) { var e2 = new Error(j.error || ('Error ' + r.status)); e2.status = r.status; throw e2; }
+      return j.datos;
+    }
+
+    function manejarError(e) {
+      if (e.status === 401) { salir(); errorLogin('Tu sesión terminó. Vuelve a entrar.'); return; }
+      toast(e.message);
+    }
+
+    /* ---------------- Sesión ---------------- */
+    $('#dbFormLogin').addEventListener('submit', async function (ev) {
+      ev.preventDefault();
+      errorLogin('');
+      var email = $('#dbEmail').value.trim(), pass = $('#dbPass').value;
+      if (!email || !pass) { errorLogin('Escribe tu correo y tu contraseña.'); return; }
+      $('#dbEntrar').disabled = true; $('#dbEntrar').textContent = 'Entrando…';
+      try {
+        var r = await sb.auth.signInWithPassword({ email: email, password: pass });
+        if (r.error) {
+          var m = r.error.message || '';
+          errorLogin(/invalid login/i.test(m) ? 'Correo o contraseña incorrectos.' : /not confirmed/i.test(m) ? 'Confirma tu correo antes de entrar.' : 'No se pudo iniciar sesión: ' + m);
+          return;
+        }
+        $('#dbPass').value = '';
+        await entrar();
+      } catch (e) {
+        errorLogin('No se pudo conectar con Supabase. Revisa tu conexión.');
+      } finally {
+        $('#dbEntrar').disabled = false; $('#dbEntrar').textContent = 'Entrar';
+      }
+    });
+
+    async function entrar() {
+      estado('espera', 'Validando acceso…');
+      try {
+        st.usuario = await api('sesion');
+      } catch (e) {
+        if (e.status === 403) {
+          await sb.auth.signOut();
+          errorLogin(e.message);
+          estado('neutro', 'Sin sesión');
+        } else {
+          estado('error', 'Sin conexión');
+          errorLogin(e.message);
+        }
+        return;
+      }
+      estado('ok', 'Conectado');
+      var u = $('#dbUsuario');
+      u.textContent = st.usuario.email + ' · ' + st.usuario.rol.charAt(0) + st.usuario.rol.slice(1).toLowerCase();
+      mostrar(u, true); mostrar($('#dbSalir'), true);
+      mostrar($('#dbLogin'), false); mostrar($('#dbApp'), true);
+      $('#c1Ejecutar').disabled = st.usuario.rol === 'LECTOR';
+      $('#c1Ejecutar').title = st.usuario.rol === 'LECTOR' ? 'Tu rol es de solo lectura' : '';
+      await Promise.all([cargarMeta(), cargarResumen()]);
+      tab('resumen');
+    }
+
+    async function salir() {
+      try { await sb.auth.signOut(); } catch (e) { /* sin red: igual se limpia la vista */ }
+      st.usuario = null; st.meta = []; st.resumen = null; st.tabla = null; st.filtros = []; st.buscar = '';
+      st.filas = []; st.total = 0; st.pagina = 0; st.ejecucion = null; st.estatusFiltro = null;
+      $('#dbTbody').innerHTML = ''; $('#dbThead').innerHTML = ''; $('#c1Body').innerHTML = ''; $('#c1Resumen').innerHTML = '';
+      mostrar($('#dbModal'), false);
+      mostrar($('#dbApp'), false); mostrar($('#dbLogin'), true);
+      mostrar($('#dbUsuario'), false); mostrar($('#dbSalir'), false);
+      estado('neutro', 'Sin sesión');
+    }
+    $('#dbSalir').addEventListener('click', function () { salir(); toast('Sesión cerrada'); });
+
+    /* ---------------- Pestañas ---------------- */
+    function tab(nombre) {
+      $$('.db-tab').forEach(function (b) {
+        var on = b.dataset.tab === nombre;
+        b.setAttribute('aria-selected', on);
+        b.classList.toggle('bg-white', on); b.classList.toggle('dark:bg-slate-950', on);
+        b.classList.toggle('shadow-sm', on); b.classList.toggle('text-brand-700', on); b.classList.toggle('dark:text-brand-300', on);
+        b.classList.toggle('text-slate-600', !on); b.classList.toggle('dark:text-slate-400', !on);
+      });
+      $$('.db-panel').forEach(function (p) { mostrar(p, p.id === 'tab-' + nombre); });
+      if (nombre === 'explorador' && !st.tabla && st.meta.length) elegirTabla(st.meta[0].nombre);
+      if (nombre === 'conciliar') prepararConciliar();
+    }
+    $$('.db-tab').forEach(function (b) { b.addEventListener('click', function () { tab(b.dataset.tab); }); });
+
+    /* ---------------- Resumen ---------------- */
+    async function cargarResumen() {
+      try { st.resumen = await api('resumen'); } catch (e) { return manejarError(e); }
+      var f = st.resumen.fuentes;
+      var kpis = [
+        ['CFDI', f.cfdi], ['CFDI recibidos', f.cfdi_recibidos], ['CFDI cancelados', f.cfdi_cancelados, f.cfdi_cancelados > 0],
+        ['Documentos ERP', f.erp_documentos], ['Movimientos bancarios', f.movimientos], ['Pedimentos', f.pedimentos],
+        ['Proveedores 69-B', f.terceros_69b, f.terceros_69b > 0],
+      ];
+      $('#dbKpis').innerHTML = kpis.map(function (k) {
+        return '<div class="rounded-xl border ' + (k[2] ? 'border-rose-300 dark:border-rose-900' : 'border-slate-200 dark:border-slate-800') + ' bg-white p-4 dark:bg-slate-950">' +
+          '<div class="text-2xl font-bold tabular-nums ' + (k[2] ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-white') + '">' + Number(k[1]).toLocaleString('es-MX') + '</div>' +
+          '<div class="mt-1 text-xs text-slate-500">' + k[0] + '</div></div>';
+      }).join('');
+
+      var ej = st.resumen.ejecuciones;
+      $('#dbEjecuciones').innerHTML = ej.length ? ej.slice(0, 5).map(function (e) {
+        var pct = e.total_partidas ? Math.round(e.total_conciliadas / e.total_partidas * 100) : 0;
+        var chips = Object.keys(e.por_estatus).map(function (s) { return '<span class="inline-flex items-center gap-1">' + chip(s) + '<span class="font-mono text-xs text-slate-500">' + e.por_estatus[s] + '</span></span>'; }).join(' ');
+        return '<button type="button" data-ej="' + e.ejecucion_id + '" class="db-ver-ej w-full rounded-xl border border-slate-200 p-3 text-left transition hover:border-brand-500 dark:border-slate-800">' +
+          '<div class="flex flex-wrap items-center justify-between gap-2"><span class="font-medium text-slate-900 dark:text-white">' + esc(e.regla_codigo) + ' · ' + esc(e.periodo_desde) + ' a ' + esc(e.periodo_hasta) + '</span>' +
+          '<span class="text-xs text-slate-500">' + esc(String(e.ejecutado_en).slice(0, 16)) + ' · ' + esc(e.ejecutado_por || '') + '</span></div>' +
+          '<div class="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div class="h-full rounded-full bg-brand-500" style="width:' + pct + '%"></div></div>' +
+          '<div class="mt-2 flex flex-wrap gap-1.5">' + chips + '</div>' +
+          '<div class="mt-2 text-xs text-slate-500">' + pct + '% conciliado · diferencias $' + fmtMonto(e.importe_diferencias) + '</div></button>';
+      }).join('') : '<p class="text-sm text-slate-500">Aún no hay conciliaciones. Ve a la pestaña Conciliar para ejecutar la primera.</p>';
+      $$('.db-ver-ej').forEach(function (b) { b.addEventListener('click', function () { st.ejecucion = +b.dataset.ej; tab('conciliar'); }); });
+
+      $('#dbCargas').innerHTML = st.resumen.cargas.length ? st.resumen.cargas.map(function (c) {
+        var arch = String(c.archivo).split(/[\\/]/).pop();
+        return '<tr><td class="py-2 pr-3"><span class="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-xs dark:bg-slate-800">' + esc(c.fuente) + '</span></td>' +
+          '<td class="max-w-[220px] truncate py-2 pr-3 text-slate-600 dark:text-slate-400" title="' + esc(c.archivo) + '">' + esc(arch) + '</td>' +
+          '<td class="py-2 pr-3 text-right tabular-nums">' + Number(c.registros).toLocaleString('es-MX') + '</td>' +
+          '<td class="py-2 text-xs text-slate-500">' + esc(String(c.cargado_en).slice(0, 16)) + '</td></tr>';
+      }).join('') : '<tr><td colspan="4" class="py-4 text-sm text-slate-500">Sin cargas. Usa los scripts de carga para subir CFDI, SAP, bancos o Data Stage.</td></tr>';
+    }
+
+    /* ---------------- Explorador ---------------- */
+    async function cargarMeta() {
+      try { st.meta = await api('meta'); } catch (e) { return manejarError(e); }
+      var tablas = st.meta.filter(function (t) { return t.tipo === 'tabla'; }), vistas = st.meta.filter(function (t) { return t.tipo === 'vista'; });
+      var opt = function (t) { return '<option value="' + esc(t.nombre) + '">' + esc(t.nombre) + ' (' + t.filas + ')</option>'; };
+      $('#dbTabla').innerHTML = '<optgroup label="Tablas">' + tablas.map(opt).join('') + '</optgroup>' + (vistas.length ? '<optgroup label="Vistas">' + vistas.map(opt).join('') + '</optgroup>' : '');
+      if (st.tabla) $('#dbTabla').value = st.tabla.nombre;
+    }
+    function metaDe(nombre) { return st.meta.filter(function (t) { return t.nombre === nombre; })[0]; }
+
+    function elegirTabla(nombre, filtros) {
+      st.tabla = metaDe(nombre);
+      if (!st.tabla) return;
+      $('#dbTabla').value = nombre;
+      st.filtros = filtros || []; st.buscar = ''; $('#dbBuscar').value = '';
+      st.orden = null; st.dir = 'asc'; st.pagina = 0;
+      $('#dbFCol').innerHTML = st.tabla.columnas.map(function (c) { return '<option value="' + esc(c.nombre) + '">' + esc(c.nombre) + '</option>'; }).join('');
+      mostrar($('#dbNuevo'), !!st.tabla.editable);
+      listar();
+    }
+    $('#dbTabla').addEventListener('change', function () { elegirTabla(this.value); });
+    var tBuscar;
+    $('#dbBuscar').addEventListener('input', function () {
+      clearTimeout(tBuscar);
+      var v = this.value;
+      tBuscar = setTimeout(function () { st.buscar = v; st.pagina = 0; listar(); }, 300);
+    });
+    $('#dbRecargar').addEventListener('click', function () { listar(); cargarMeta(); });
+    $('#dbPrev').addEventListener('click', function () { if (st.pagina > 0) { st.pagina--; listar(); } });
+    $('#dbNext').addEventListener('click', function () { if ((st.pagina + 1) * CFG.porPagina < st.total) { st.pagina++; listar(); } });
+    $('#dbFOp').addEventListener('change', function () { $('#dbFVal').disabled = /nulo/.test(this.value); });
+    $('#dbFiltroForm').addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var op = $('#dbFOp').value, val = $('#dbFVal').value;
+      if (!/nulo/.test(op) && val === '') { toast('Escribe un valor para el filtro'); return; }
+      st.filtros.push({ columna: $('#dbFCol').value, op: op, valor: val });
+      $('#dbFVal').value = ''; st.pagina = 0; listar();
+    });
+
+    var OPS = { eq: '=', neq: '≠', contiene: 'contiene', empieza: 'empieza con', gt: '>', gte: '≥', lt: '<', lte: '≤', es_nulo: 'vacío', no_nulo: 'no vacío' };
+    function pintarFiltros() {
+      $('#dbFiltros').innerHTML = st.filtros.map(function (f, i) {
+        return '<span class="inline-flex items-center gap-1 rounded-full bg-brand-500/10 px-2.5 py-1 text-xs text-brand-700 dark:text-brand-300">' +
+          '<span class="font-mono">' + esc(f.columna) + '</span> ' + esc(OPS[f.op]) + (/nulo/.test(f.op) ? '' : ' <strong>' + esc(f.valor) + '</strong>') +
+          '<button type="button" data-i="' + i + '" class="db-quitar ml-1 rounded-full px-1 hover:bg-brand-500/20" aria-label="Quitar filtro">✕</button></span>';
+      }).join('');
+      $$('.db-quitar').forEach(function (b) { b.addEventListener('click', function () { st.filtros.splice(+b.dataset.i, 1); st.pagina = 0; listar(); }); });
+    }
+
+    function celda(c, v) {
+      if (v === null || v === undefined) return '<span class="text-slate-400">—</span>';
+      if (typeof v === 'object') return '<span class="font-mono text-[11px] text-slate-500">' + esc(JSON.stringify(v)).slice(0, 80) + '</span>';
+      if (c.nombre === 'estatus' && T.STATUS && T.STATUS[v]) return chip(v);
+      if (c.tipo === 'bool') return v ? '✓' : '✗';
+      if (c.tipo === 'numeric' && MONTO.test(c.nombre)) return '<span class="tabular-nums">' + fmtMonto(v) + '</span>';
+      var s = String(v);
+      if (c.ref) return '<button type="button" class="db-fk font-mono text-brand-700 underline decoration-dotted underline-offset-2 dark:text-brand-300" data-t="' + esc(c.ref.tabla) + '" data-c="' + esc(c.ref.columna) + '" data-v="' + esc(s) + '" title="Ver en ' + esc(c.ref.tabla) + '">' + esc(s) + '</button>';
+      return esc(s.length > 60 ? s.slice(0, 60) + '…' : s);
+    }
+
+    async function listar() {
+      if (!st.tabla) return;
+      pintarFiltros();
+      $('#dbTbody').innerHTML = '<tr><td class="px-4 py-6 text-slate-500">Cargando…</td></tr>';
+      var r;
+      try {
+        r = await api('listar', { tabla: st.tabla.nombre, filtros: st.filtros, buscar: st.buscar, orden: st.orden, dir: st.dir, limite: CFG.porPagina, desplazamiento: st.pagina * CFG.porPagina });
+      } catch (e) {
+        $('#dbTbody').innerHTML = '<tr><td class="px-4 py-6 text-rose-600">' + esc(e.message) + '</td></tr>';
+        return manejarError(e);
+      }
+      st.filas = r.filas; st.total = r.total;
+      var cols = st.tabla.columnas;
+      $('#dbThead').innerHTML = '<tr>' + cols.map(function (c) {
+        var flecha = st.orden === c.nombre ? (st.dir === 'asc' ? ' ▲' : ' ▼') : '';
+        return '<th class="whitespace-nowrap px-3 py-2 font-medium"><button type="button" class="db-ord hover:text-brand-600" data-c="' + esc(c.nombre) + '">' + esc(c.nombre) + (c.pk ? ' <span class="text-gold-500" title="Llave primaria">●</span>' : '') + flecha + '</button></th>';
+      }).join('') + '</tr>';
+      $('#dbTbody').innerHTML = r.filas.length ? r.filas.map(function (f, i) {
+        return '<tr class="db-fila cursor-pointer hover:bg-brand-500/5" data-i="' + i + '" tabindex="0">' + cols.map(function (c) {
+          return '<td class="whitespace-nowrap px-3 py-2 ' + (c.tipo === 'numeric' ? 'text-right' : '') + '">' + celda(c, f[c.nombre]) + '</td>';
+        }).join('') + '</tr>';
+      }).join('') : '<tr><td colspan="' + cols.length + '" class="px-4 py-6 text-slate-500">No hay registros con estos filtros.</td></tr>';
+      var a = st.total ? st.pagina * CFG.porPagina + 1 : 0, b = Math.min(st.total, (st.pagina + 1) * CFG.porPagina);
+      $('#dbPaginaInfo').textContent = 'Mostrando ' + a + '–' + b + ' de ' + st.total.toLocaleString('es-MX');
+      $('#dbPrev').disabled = st.pagina === 0; $('#dbNext').disabled = b >= st.total;
+
+      $$('.db-ord').forEach(function (btn) { btn.addEventListener('click', function () {
+        var c = btn.dataset.c; st.dir = st.orden === c && st.dir === 'asc' ? 'desc' : 'asc'; st.orden = c; listar();
+      }); });
+      $$('.db-fk').forEach(function (btn) { btn.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        if (!metaDe(btn.dataset.t)) return toast('No tienes acceso a ' + btn.dataset.t);
+        elegirTabla(btn.dataset.t, [{ columna: btn.dataset.c, op: 'eq', valor: btn.dataset.v }]);
+      }); });
+      $$('.db-fila').forEach(function (tr) {
+        var abrir = function () { abrirEditor(st.filas[+tr.dataset.i]); };
+        tr.addEventListener('click', abrir);
+        tr.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') abrir(); });
+      });
+    }
+
+    $('#dbCsv').addEventListener('click', function () {
+      if (!st.tabla || !st.filas.length) return toast('No hay filas para exportar');
+      var cols = st.tabla.columnas.map(function (c) { return c.nombre; });
+      var q = function (v) { v = v == null ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v); return '"' + v.replace(/"/g, '""') + '"'; };
+      var txt = [cols.join(',')].concat(st.filas.map(function (f) { return cols.map(function (c) { return q(f[c]); }).join(','); })).join('\n');
+      try {
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob(['﻿' + txt], { type: 'text/csv;charset=utf-8' }));
+        a.download = st.tabla.nombre + '.csv'; document.body.appendChild(a); a.click(); a.remove();
+        toast('CSV exportado (página actual)');
+      } catch (e) { toast('No se pudo exportar el CSV'); }
+    });
+
+    /* ---------------- Editor de registros ---------------- */
+    var edit = { fila: null, nuevo: false };
+    function tipoInput(c) {
+      if (c.tipo === 'date') return 'date';
+      if (/^int|^numeric|^float/.test(c.tipo)) return 'text" inputmode="decimal';
+      return 'text';
+    }
+    function abrirEditor(fila) {
+      var t = st.tabla;
+      edit.fila = fila; edit.nuevo = !fila;
+      var soloLectura = !t.editable;
+      $('#dbModalTitulo').textContent = (fila ? (soloLectura ? 'Detalle · ' : 'Editar · ') : 'Nuevo registro · ') + t.nombre;
+      $('#dbModalForm').innerHTML = t.columnas.map(function (c) {
+        var v = fila ? fila[c.nombre] : null;
+        var bloqueado = soloLectura || c.generada || (fila && c.pk);
+        var obligatorio = !c.nulo && !c.defecto && !c.generada;
+        var id = 'campo_' + c.nombre;
+        var etiqueta = '<label for="' + id + '" class="flex items-baseline justify-between gap-2 text-xs font-medium text-slate-600 dark:text-slate-400"><span class="font-mono">' + esc(c.nombre) + (obligatorio ? ' <span class="text-rose-500">*</span>' : '') + '</span>' +
+          '<span class="text-[10px] uppercase tracking-wider text-slate-400">' + esc(c.tipo) + (c.ref ? ' → ' + esc(c.ref.tabla) : '') + '</span></label>';
+        var cls = 'mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm disabled:bg-slate-100 disabled:text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:disabled:bg-slate-800';
+        var campo;
+        var texto = v == null ? '' : typeof v === 'object' ? JSON.stringify(v, null, 2) : String(v);
+        if (c.tipo === 'bool') {
+          campo = '<select id="' + id + '" data-c="' + esc(c.nombre) + '" class="' + cls + '"' + (bloqueado ? ' disabled' : '') + '>' +
+            (c.nulo ? '<option value="">(vacío)</option>' : '') + '<option value="true"' + (v === true ? ' selected' : '') + '>Sí</option><option value="false"' + (v === false ? ' selected' : '') + '>No</option></select>';
+        } else if (c.tipo === 'jsonb' || c.tipo === 'text' || (c.largo && c.largo > 200)) {
+          campo = '<textarea id="' + id + '" data-c="' + esc(c.nombre) + '" rows="' + (c.tipo === 'jsonb' ? 4 : 2) + '" class="' + cls + ' font-mono text-xs"' + (bloqueado ? ' disabled' : '') + '>' + esc(texto) + '</textarea>';
+        } else {
+          campo = '<input id="' + id + '" data-c="' + esc(c.nombre) + '" type="' + tipoInput(c) + '" value="' + esc(texto) + '"' + (c.largo ? ' maxlength="' + c.largo + '"' : '') +
+            (fila == null && c.defecto ? ' placeholder="automático"' : '') + ' class="' + cls + '"' + (bloqueado ? ' disabled' : '') + ' />';
+        }
+        return '<div class="' + (c.tipo === 'jsonb' || c.tipo === 'text' ? 'sm:col-span-2' : '') + '">' + etiqueta + campo + '</div>';
+      }).join('');
+      mostrar($('#dbGuardar'), !soloLectura);
+      mostrar($('#dbEliminar'), !!fila && !!t.borrable);
+      $('#dbEliminar').textContent = 'Eliminar'; delete $('#dbEliminar').dataset.armado;
+      modalError('');
+      mostrar($('#dbModal'), true);
+      var primero = $('#dbModalForm input:not([disabled]), #dbModalForm select:not([disabled]), #dbModalForm textarea:not([disabled])');
+      (primero || $('#dbModalCerrar')).focus();
+    }
+    function modalError(m) { var e = $('#dbModalError'); e.textContent = m || ''; mostrar(e, !!m); }
+    function cerrarModal() { mostrar($('#dbModal'), false); }
+    $('#dbModalCerrar').addEventListener('click', cerrarModal);
+    $('#dbCancelar').addEventListener('click', cerrarModal);
+    $('#dbModal').addEventListener('click', function (ev) { if (ev.target === this) cerrarModal(); });
+    document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && !$('#dbModal').hidden) cerrarModal(); });
+    $('#dbNuevo').addEventListener('click', function () { abrirEditor(null); });
+
+    $('#dbModalForm').addEventListener('submit', async function (ev) {
+      ev.preventDefault();
+      var t = st.tabla, valores = {}, cambios = 0, invalido = '';
+      $$('#dbModalForm [data-c]').forEach(function (el) {
+        if (el.disabled) return;
+        var c = t.columnas.filter(function (x) { return x.nombre === el.dataset.c; })[0];
+        var nuevo = el.value;
+        var previo = edit.fila ? edit.fila[c.nombre] : null;
+        var previoTxt = previo == null ? '' : typeof previo === 'object' ? JSON.stringify(previo, null, 2) : String(previo);
+        if (edit.fila && nuevo === previoTxt) return;
+        if (!edit.fila && nuevo === '') return;
+        if (c.tipo === 'jsonb' && nuevo !== '') {
+          try { JSON.parse(nuevo); } catch (e) { invalido = 'El campo ' + c.nombre + ' debe ser JSON válido.'; return; }
+        }
+        valores[c.nombre] = nuevo === '' ? null : nuevo;
+        cambios++;
+      });
+      modalError(invalido);
+      if (invalido) return;
+      if (!cambios) { cerrarModal(); return toast('Sin cambios'); }
+      $('#dbGuardar').disabled = true;
+      try {
+        if (edit.nuevo) {
+          await api('crear', { tabla: t.nombre, valores: valores });
+          toast('Registro creado');
+        } else {
+          var llave = {}; t.pk.forEach(function (k) { llave[k] = edit.fila[k]; });
+          await api('actualizar', { tabla: t.nombre, llave: llave, valores: valores });
+          toast('Cambios guardados');
+        }
+        cerrarModal(); listar(); cargarMeta();
+      } catch (e) {
+        if (e.status === 401) { cerrarModal(); return manejarError(e); }
+        modalError(e.message);
+      } finally { $('#dbGuardar').disabled = false; }
+    });
+
+    $('#dbEliminar').addEventListener('click', async function () {
+      var b = this;
+      if (!b.dataset.armado) {
+        b.dataset.armado = '1'; b.textContent = 'Confirmar eliminación';
+        setTimeout(function () { if (b.dataset.armado) { delete b.dataset.armado; b.textContent = 'Eliminar'; } }, 4000);
+        return;
+      }
+      var llave = {}; st.tabla.pk.forEach(function (k) { llave[k] = edit.fila[k]; });
+      try {
+        await api('eliminar', { tabla: st.tabla.nombre, llave: llave });
+        cerrarModal(); toast('Registro eliminado'); listar(); cargarMeta();
+      } catch (e) { modalError(e.message); }
+    });
+
+    /* ---------------- Conciliar ---------------- */
+    function prepararConciliar() {
+      var r = st.resumen;
+      if (!r) return;
+      $('#c1Empresa').innerHTML = r.empresas.length ? r.empresas.map(function (e) { return '<option value="' + e.empresa_id + '">' + esc(e.razon_social) + ' · ' + esc(e.rfc) + '</option>'; }).join('') : '<option value="">Sin empresas cargadas</option>';
+      if (!$('#c1Desde').value) {
+        var hoy = new Date(), ini = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1), fin = new Date(hoy.getFullYear(), hoy.getMonth(), 0);
+        var iso = function (d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+        $('#c1Desde').value = iso(ini); $('#c1Hasta').value = iso(fin);
+      }
+      var c1 = r.reglas.filter(function (x) { return x.regla_codigo === 'C1'; })[0];
+      if (c1) { $('#c1TolImp').placeholder = c1.tolerancia_importe; $('#c1TolDias').placeholder = c1.tolerancia_dias; }
+      var ej = r.ejecuciones.filter(function (e) { return e.regla_codigo === 'C1'; });
+      $('#c1Ver').innerHTML = ej.length ? ej.map(function (e) { return '<option value="' + e.ejecucion_id + '">#' + e.ejecucion_id + ' · ' + esc(e.periodo_desde) + ' a ' + esc(e.periodo_hasta) + ' · ' + esc(String(e.ejecutado_en).slice(0, 16)) + '</option>'; }).join('') : '<option value="">Sin ejecuciones</option>';
+      if (!st.ejecucion && ej.length) st.ejecucion = ej[0].ejecucion_id;
+      if (st.ejecucion) { $('#c1Ver').value = st.ejecucion; verResultados(); }
+      else $('#c1Body').innerHTML = '<tr><td colspan="8" class="px-4 py-6 text-sm text-slate-500">Elige el periodo y ejecuta la conciliación para ver resultados.</td></tr>';
+    }
+    $('#c1Ver').addEventListener('change', function () { st.ejecucion = +this.value || null; st.estatusFiltro = null; verResultados(); });
+
+    $('#dbFormC1').addEventListener('submit', async function (ev) {
+      ev.preventDefault();
+      if (!$('#c1Empresa').value) return toast('Primero carga datos de una empresa');
+      if ($('#c1Desde').value > $('#c1Hasta').value) return toast('La fecha inicial debe ser anterior a la final');
+      var btn = $('#c1Ejecutar'); btn.disabled = true; btn.textContent = 'Conciliando…';
+      try {
+        var e = await api('ejecutar', { regla: 'C1', empresa_id: $('#c1Empresa').value, desde: $('#c1Desde').value, hasta: $('#c1Hasta').value, tolerancia_importe: $('#c1TolImp').value, tolerancia_dias: $('#c1TolDias').value });
+        toast('Conciliación #' + e.ejecucion_id + ': ' + e.total_conciliadas + ' de ' + e.total_partidas + ' conciliadas');
+        st.ejecucion = e.ejecucion_id; st.estatusFiltro = null;
+        await cargarResumen(); prepararConciliar();
+      } catch (e2) { manejarError(e2); }
+      finally { btn.disabled = st.usuario && st.usuario.rol === 'LECTOR'; btn.textContent = 'Ejecutar C1 · CFDI recibidos vs cuentas por pagar'; }
+    });
+
+    async function verResultados() {
+      if (!st.ejecucion) return;
+      $('#c1Body').innerHTML = '<tr><td colspan="8" class="px-4 py-6 text-slate-500">Cargando…</td></tr>';
+      var r;
+      try { r = await api('listar', { tabla: 'v_resultado_detalle', filtros: [{ columna: 'ejecucion_id', op: 'eq', valor: st.ejecucion }], orden: 'resultado_id', limite: 500 }); }
+      catch (e) { return manejarError(e); }
+      var cuenta = {};
+      r.filas.forEach(function (f) { cuenta[f.estatus] = (cuenta[f.estatus] || 0) + 1; });
+      $('#c1Resumen').innerHTML = '<button type="button" data-s="" class="c1-est rounded-full border px-3 py-1 text-xs ' + (!st.estatusFiltro ? 'border-brand-500 text-brand-700 dark:text-brand-300' : 'border-slate-300 dark:border-slate-700') + '">Todos · ' + r.filas.length + '</button>' +
+        Object.keys(cuenta).map(function (s) { return '<button type="button" data-s="' + s + '" class="c1-est inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ' + (st.estatusFiltro === s ? 'border-brand-500' : 'border-transparent') + '">' + chip(s) + '<span class="font-mono text-xs text-slate-500">' + cuenta[s] + '</span></button>'; }).join('');
+      $$('.c1-est').forEach(function (b) { b.addEventListener('click', function () { st.estatusFiltro = b.dataset.s || null; verResultados(); }); });
+      var filas = r.filas.filter(function (f) { return !st.estatusFiltro || f.estatus === st.estatusFiltro; });
+      var puedeRevisar = st.usuario && st.usuario.rol !== 'LECTOR';
+      $('#c1Body').innerHTML = filas.map(function (f) {
+        var rev = f.revisado_por ? '<div class="text-xs text-emerald-700 dark:text-emerald-400">✓ ' + esc(f.revisado_por) + '</div>' : '';
+        return '<tr data-r="' + f.resultado_id + '">' +
+          '<td class="px-4 py-3 font-mono text-xs">' + (f.num_documento ? esc(f.sociedad + '/' + f.ejercicio + '/' + f.num_documento) : '—') + '</td>' +
+          '<td class="px-4 py-3 font-mono text-[11px] text-slate-500">' + (f.uuid ? esc(f.uuid) : '—') + '</td>' +
+          '<td class="px-4 py-3 font-mono text-xs">' + esc(f.rfc_emisor || '—') + '</td>' +
+          '<td class="px-4 py-3 text-right tabular-nums">' + (f.importe_a != null ? fmtMonto(f.importe_a) : '—') + '</td>' +
+          '<td class="px-4 py-3 text-right tabular-nums">' + (f.importe_b != null ? fmtMonto(f.importe_b) : '—') + '</td>' +
+          '<td class="px-4 py-3 text-center text-xs">' + (f.nivel_cruce ? 'N' + f.nivel_cruce : '—') + '</td>' +
+          '<td class="px-4 py-3">' + chip(f.estatus) + (f.comentario ? '<div class="mt-1 max-w-[220px] text-xs text-slate-500">' + esc(f.comentario) + '</div>' : '') + '</td>' +
+          '<td class="px-4 py-3">' + rev + (puedeRevisar ? '<button type="button" class="c1-rev text-xs font-medium text-brand-700 hover:underline dark:text-brand-300">' + (f.revisado_por ? 'Editar nota' : 'Marcar revisado') + '</button>' : '') + '</td></tr>';
+      }).join('') || '<tr><td colspan="8" class="px-4 py-6 text-sm text-slate-500">Sin resultados para este filtro.</td></tr>';
+      $$('.c1-rev').forEach(function (b) { b.addEventListener('click', function () {
+        var tr = b.closest('tr'), id = +tr.dataset.r;
+        var actual = r.filas.filter(function (f) { return String(f.resultado_id) === String(id); })[0];
+        var celda = b.parentNode;
+        celda.innerHTML = '<label class="sr-only" for="rev' + id + '">Nota de revisión</label><textarea id="rev' + id + '" rows="2" class="w-48 rounded-lg border border-slate-300 bg-white p-2 text-xs dark:border-slate-700 dark:bg-slate-900">' + esc(actual.comentario || '') + '</textarea>' +
+          '<div class="mt-1 flex gap-2"><button type="button" class="c1-ok rounded-md bg-brand-600 px-2 py-1 text-xs font-medium text-white">Guardar</button><button type="button" class="c1-no rounded-md border border-slate-300 px-2 py-1 text-xs dark:border-slate-700">Cancelar</button></div>';
+        $('textarea', celda).focus();
+        $('.c1-no', celda).addEventListener('click', verResultados);
+        $('.c1-ok', celda).addEventListener('click', async function () {
+          try { await api('revisar', { resultado_id: id, comentario: $('textarea', celda).value.trim() || null }); toast('Resultado marcado como revisado'); verResultados(); }
+          catch (e) { manejarError(e); }
+        });
+      }); });
+    }
+
+    /* ---------------- Arranque ---------------- */
+    estado('espera', 'Conectando…');
+    sb.auth.getSession().then(function (r) {
+      if (r.data.session) entrar();
+      else estado('neutro', 'Sin sesión');
+    }).catch(function () { estado('error', 'Sin conexión con Supabase'); });
   })();
   </script>
 </body>
