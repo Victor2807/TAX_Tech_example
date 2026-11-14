@@ -76,6 +76,7 @@ El objetivo es encontrar diferencias antes de presentar declaraciones, sustentar
 | C6 | Pedimentos vs contabilidad | Data Stage ↔ ERP | Número de pedimento (patente-aduana-número) |
 | C7 | Pago de pedimentos vs banco | Data Stage (`510`) ↔ Estado de cuenta | Importe de contribuciones + fecha de pago |
 | C8 | Facturas de importación vs pedimento | Data Stage (`505`) ↔ ERP | Número de factura del proveedor extranjero |
+| C9 | Retenciones de ISR e IVA vs entero | CFDI ↔ ERP ↔ Estado de cuenta | UUID + cuentas de retención; entero del mes siguiente (día 17) |
 
 ### Reglas de cruce
 
@@ -100,11 +101,11 @@ Las cuatro fuentes y los resultados de conciliación se guardan en un modelo ent
 
 ## Panel de datos (Supabase)
 
-La página `index.html` incluye un panel conectado a Supabase para consultar las fuentes cargadas, corregir registros y ejecutar las conciliaciones C1 a C5 y C7.
+La página `index.html` incluye un panel conectado a Supabase para consultar las fuentes cargadas, corregir registros y ejecutar las conciliaciones C1 a C5, C7 y C9.
 
 - **Acceso:** inicio de sesión con Supabase Auth. Solo entran los correos dados de alta por un administrador, con rol Lector, Editor o Admin.
 - **Seguridad:** la base no está publicada en la API pública de Supabase. La página habla con una función privada (Edge Function) que valida la sesión y el rol en cada petición, y registra cada cambio en una bitácora.
-- **Funciones:** resumen de cargas y conciliaciones, explorador de tablas con búsqueda, filtros, orden y navegación entre registros relacionados, editor de registros, papel de trabajo mensual de IVA exportable a Excel, ejecución de C1 (CFDI contra cuentas por pagar), C2 (CFDI emitidos contra ingresos), C3 (pagos contra complementos de pago REP), C4 (pagos SAP contra banco), C5 (IVA acreditable en flujo de efectivo, nacional y de importación) y C7 (pago de pedimentos contra banco) con revisión de resultados y exportación a CSV.
+- **Funciones:** resumen de cargas y conciliaciones, explorador de tablas con búsqueda, filtros, orden y navegación entre registros relacionados, editor de registros, papel de trabajo mensual de IVA exportable a Excel, ejecución de C1 (CFDI contra cuentas por pagar), C2 (CFDI emitidos contra ingresos), C3 (pagos contra complementos de pago REP), C4 (pagos SAP contra banco), C5 (IVA acreditable en flujo de efectivo, nacional y de importación), C7 (pago de pedimentos contra banco) y C9 (retenciones de ISR e IVA contra su entero) con revisión de resultados y exportación a CSV.
 
 Los scripts de carga (CFDI, SAP, estados de cuenta y Data Stage), la función y las migraciones se mantienen en un repositorio privado.
 
@@ -121,7 +122,7 @@ Los scripts de carga (CFDI, SAP, estados de cuenta y Data Stage), la función y 
                   1. Ingesta y validación
                   2. Normalización (RFC, fechas, moneda, TC)
                   3. Modelo de datos común
-                  4. Motor de conciliación (C1–C8)
+                  4. Motor de conciliación (C1–C9)
                   5. Cálculo de IVA / retenciones
                               ▼
           Reportes de diferencias · Papeles de trabajo · DIOT
@@ -153,7 +154,7 @@ TAX_Tech_example/
 ├── src/
 │   ├── ingestion/      # Lectores: XML CFDI, SAP, MT940/CAMT, Data Stage
 │   ├── normalization/  # Limpieza y modelo de datos común
-│   ├── reconciliation/ # Reglas C1–C8
+│   ├── reconciliation/ # Reglas C1–C9
 │   └── reporting/      # Papeles de trabajo y reportes
 ├── config/             # Tolerancias, mapeos de cuentas e indicadores de IVA
 ├── db/
