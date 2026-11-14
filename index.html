@@ -1691,11 +1691,14 @@
         ['Importe banco', 'text-right', function (f) { return monto(f.importe_b); }],
       ],
       C5: [
-        ['CFDI', '', function (f) { return mono(f.uuid, 'text-[11px] text-slate-500') + (f.metodo_pago ? ' <span class="rounded bg-slate-100 px-1 text-[10px] font-medium dark:bg-slate-800">' + esc(f.metodo_pago) + '</span>' : ''); }],
+        ['CFDI o pedimento', '', function (f) {
+          if (!f.uuid && f.pedimento) return mono(f.pedimento) + ' <span class="rounded bg-amber-500/15 px-1 text-[10px] font-medium text-amber-700 dark:text-amber-300">Importación</span>';
+          return mono(f.uuid, 'text-[11px] text-slate-500') + (f.metodo_pago ? ' <span class="rounded bg-slate-100 px-1 text-[10px] font-medium dark:bg-slate-800">' + esc(f.metodo_pago) + '</span>' : '');
+        }],
         ['RFC emisor', '', function (f) { return mono(f.rfc_emisor); }],
         ['Doc. ERP', '', function (f) { return mono(f.num_documento); }],
         ['Pago en banco', '', function (f) { return f.banco ? esc(f.banco) + '<div class="text-xs text-slate-500">' + esc(f.fecha_banco || '') + '</div>' : dash; }],
-        ['IVA del CFDI', 'text-right', function (f) { return monto(f.importe_a); }],
+        ['IVA', 'text-right', function (f) { return monto(f.importe_a); }],
         ['IVA acreditable', 'text-right', function (f) { return Number(f.importe_b) > 0 ? '<span class="font-semibold text-emerald-700 dark:text-emerald-400">' + monto(f.importe_b) + '</span>' : monto(f.importe_b); }],
       ],
       C7: [
@@ -1739,7 +1742,10 @@
       $('#c1Head').innerHTML = '<tr>' + COLUMNAS[regla].map(function (c) { return '<th class="px-4 py-3 font-medium ' + c[1] + '">' + c[0] + '</th>'; }).join('') +
         '<th class="px-4 py-3 text-center font-medium">Nivel</th><th class="px-4 py-3 font-medium">Estatus</th><th class="px-4 py-3 font-medium">Revisión</th></tr>';
     }
-    $('#c1Regla').addEventListener('change', function () { st.ejecucion = null; st.estatusFiltro = null; prepararConciliar(); });
+    $('#c1Regla').addEventListener('change', function () {
+      $('#c1TolImp').value = ''; $('#c1TolDias').value = '';   // cada regla parte de sus propias tolerancias
+      st.ejecucion = null; st.estatusFiltro = null; prepararConciliar();
+    });
     $('#c1Ver').addEventListener('change', function () { st.ejecucion = +this.value || null; st.estatusFiltro = null; verResultados(); });
 
     $('#dbFormC1').addEventListener('submit', async function (ev) {
@@ -1775,6 +1781,7 @@
       if (regla === 'C5' && ejSel && ejSel.parametros) {
         totalIva = '<div class="mr-2 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-2 text-sm">' +
           '<span>IVA acreditable <strong class="tabular-nums text-emerald-700 dark:text-emerald-400">$' + fmtMonto(ejSel.parametros.iva_acreditable || 0) + '</strong></span>' +
+          (ejSel.parametros.iva_importacion != null ? '<span class="text-slate-500">nacional <strong class="tabular-nums">$' + fmtMonto(ejSel.parametros.iva_nacional || 0) + '</strong> · importación <strong class="tabular-nums">$' + fmtMonto(ejSel.parametros.iva_importacion || 0) + '</strong></span>' : '') +
           '<span class="text-slate-500">Pendiente por falta de pago <strong class="tabular-nums">$' + fmtMonto(ejSel.parametros.iva_pendiente || 0) + '</strong></span></div>';
       }
       $('#c1Resumen').innerHTML = totalIva + '<button type="button" data-s="" class="c1-est rounded-full border px-3 py-1 text-xs ' + (!st.estatusFiltro ? 'border-brand-500 text-brand-700 dark:text-brand-300' : 'border-slate-300 dark:border-slate-700') + '">Todos · ' + r.filas.length + '</button>' +
