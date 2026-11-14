@@ -355,7 +355,7 @@
           <div class="max-w-2xl">
             <p class="text-sm font-semibold uppercase tracking-widest text-brand-600 dark:text-brand-400">Panel de datos</p>
             <h2 class="mt-3 text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">Tus fuentes, conectadas a Supabase</h2>
-            <p class="mt-4 text-slate-600 dark:text-slate-400">Consulta, filtra y corrige los registros cargados, y ejecuta las conciliaciones C1, C4, C5 y C7 sobre tus datos. Solo entran las cuentas autorizadas.</p>
+            <p class="mt-4 text-slate-600 dark:text-slate-400">Consulta, filtra y corrige los registros cargados, y ejecuta las conciliaciones C1, C2, C4, C5 y C7 sobre tus datos. Solo entran las cuentas autorizadas.</p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <span id="dbEstado" class="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:text-slate-300"><span class="h-2 w-2 rounded-full bg-slate-400"></span>Conectando…</span>
@@ -459,6 +459,7 @@
                 <label for="c1Regla" class="text-xs font-medium text-slate-500">Regla</label>
                 <select id="c1Regla" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium dark:border-slate-700 dark:bg-slate-900">
                   <option value="C1">C1 · CFDI recibidos vs cuentas por pagar</option>
+                  <option value="C2">C2 · CFDI emitidos vs ingresos</option>
                   <option value="C4">C4 · Pagos SAP vs banco</option>
                   <option value="C5">C5 · IVA acreditable en flujo de efectivo</option>
                   <option value="C7">C7 · Pago de pedimentos vs banco</option>
@@ -1682,6 +1683,13 @@
         ['Importe ERP', 'text-right', function (f) { return monto(f.importe_a); }],
         ['Importe CFDI', 'text-right', function (f) { return monto(f.importe_b); }],
       ],
+      C2: [
+        ['Doc. ERP', '', function (f) { return f.num_documento ? mono(f.sociedad + '/' + f.ejercicio + '/' + f.num_documento) : dash; }],
+        ['CFDI emitido', '', function (f) { return f.uuid ? mono(f.serie_folio || '') + '<div class="font-mono text-[11px] text-slate-500">' + esc(f.uuid) + '</div>' : dash; }],
+        ['Cliente', '', function (f) { return mono(f.rfc_tercero || f.rfc_receptor); }],
+        ['Importe ERP', 'text-right', function (f) { return monto(f.importe_a); }],
+        ['Importe CFDI', 'text-right', function (f) { return monto(f.importe_b); }],
+      ],
       C4: [
         ['Pago SAP', '', function (f) { return f.num_documento ? mono(f.num_documento) + (f.documentos_erp > 1 ? ' <span class="text-xs text-slate-500">+' + (f.documentos_erp - 1) + ' doc.</span>' : '') : dash; }],
         ['RFC', '', function (f) { return mono(f.rfc_tercero); }],
@@ -1879,19 +1887,21 @@
           ['Origen', 'Conciliación C5 #' + h.ejecucion_id + ' del ' + String(h.ejecutado_en).slice(0, 16).replace('T', ' ') + (h.ejecutado_por ? ' · ' + h.ejecutado_por : '')],
           [],
           ['Concepto', 'Importe'],
-          ['IVA trasladado en CFDI emitidos del periodo *', n(dt.iva_trasladado)],
+          ['IVA trasladado cobrado en el periodo *', n(dt.iva_trasladado)],
           ['(-) IVA acreditable nacional', n(dt.iva_acreditable_nacional)],
           ['(-) IVA acreditable de importación', n(dt.iva_acreditable_importacion)],
           ['IVA a cargo (positivo) o a favor (negativo)', saldo],
           [],
           ['IVA retenido a enterar', n(dt.iva_retenido)],
           ['IVA pendiente de acreditar (facturas sin pagar)', n(dt.iva_pendiente)],
+          ['IVA trasladado facturado en el periodo', n(dt.iva_trasladado_facturado)],
+          ['IVA facturado pendiente de cobro', n(dt.iva_trasladado_por_cobrar)],
           [],
-          ['* El IVA trasladado se toma de los CFDI de ingreso emitidos y vigentes del periodo; su cobro aún no se confirma contra el banco.'],
+          ['* IVA de los CFDI emitidos cuyo cobro confirmó C4 en el banco (PUE) o según los complementos de pago emitidos (PPD).'],
           ['Herramienta de apoyo: revisa las cifras antes de presentar la declaración.'],
         ]);
         ws.B11 = { t: 'n', f: 'B8-B9-B10', v: Math.round(saldo * 100) / 100 };
-        ['B8', 'B9', 'B10', 'B11', 'B13', 'B14'].forEach(function (k) { if (ws[k]) ws[k].z = '#,##0.00;[Red]-#,##0.00'; });
+        ['B8', 'B9', 'B10', 'B11', 'B13', 'B14', 'B15', 'B16'].forEach(function (k) { if (ws[k]) ws[k].z = '#,##0.00;[Red]-#,##0.00'; });
         ws['!cols'] = [{ wch: 52 }, { wch: 48 }];
         X.utils.book_append_sheet(wb, ws, 'Determinación');
 
@@ -1909,11 +1919,11 @@
             formulas: [{ col: 'F', f: 'D{r}-E{r}', v: function (f) { return Math.round(((f[3] || 0) - (f[4] || 0)) * 100) / 100; } }] }), 'No acreditable');
 
         // 4. IVA trasladado
-        X.utils.book_append_sheet(wb, hojaTabla(X, 'CFDI emitidos vigentes del periodo',
-          ['Fecha', 'Serie', 'Folio', 'UUID', 'RFC receptor', 'Cliente', 'Método', 'Moneda', 'Total MXN', 'IVA trasladado'],
-          d.trasladado.map(function (r) { return [r.fecha, r.serie, r.folio, r.uuid, r.rfc_receptor, r.nombre, r.metodo_pago, r.moneda, n(r.total_mxn), n(r.iva)]; }),
-          { dinero: ['I', 'J'], totales: ['I', 'J'], anchos: [12, 7, 9, 38, 15, 26, 8, 8, 15, 15],
-            nota: 'El cobro de estos CFDI aún no se confirma contra el banco (conciliación C2 pendiente).' }), 'IVA trasladado');
+        X.utils.book_append_sheet(wb, hojaTabla(X, 'CFDI emitidos del periodo y cobros del periodo',
+          ['Fecha', 'Serie', 'Folio', 'UUID', 'RFC receptor', 'Cliente', 'Método', 'Estatus C2', 'Fecha de cobro', 'Banco', 'Total MXN', 'IVA trasladado', 'IVA cobrado'],
+          d.trasladado.map(function (r) { return [r.fecha, r.serie, r.folio, r.uuid, r.rfc_receptor, r.nombre, r.metodo_pago, r.estatus_c2, r.fecha_cobro, r.banco, n(r.total_mxn), n(r.iva), n(r.iva_cobrado)]; }),
+          { dinero: ['K', 'L', 'M'], totales: ['K', 'L', 'M'], anchos: [12, 7, 9, 38, 15, 26, 8, 20, 14, 12, 15, 15, 14],
+            nota: 'IVA cobrado: cobro confirmado por C4 en el banco (PUE) o complementos de pago emitidos (PPD). Estatus C2: cruce del CFDI con el ingreso del ERP.' }), 'IVA trasladado');
 
         // 5. Base DIOT
         X.utils.book_append_sheet(wb, hojaTabla(X, 'Base para la DIOT · actos pagados en el periodo',

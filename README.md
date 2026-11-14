@@ -100,11 +100,11 @@ Las cuatro fuentes y los resultados de conciliación se guardan en un modelo ent
 
 ## Panel de datos (Supabase)
 
-La página `index.html` incluye un panel conectado a Supabase para consultar las fuentes cargadas, corregir registros y ejecutar las conciliaciones C1, C4, C5 y C7.
+La página `index.html` incluye un panel conectado a Supabase para consultar las fuentes cargadas, corregir registros y ejecutar las conciliaciones C1, C2, C4, C5 y C7.
 
 - **Acceso:** inicio de sesión con Supabase Auth. Solo entran los correos dados de alta por un administrador, con rol Lector, Editor o Admin.
 - **Seguridad:** la base no está publicada en la API pública de Supabase. La página habla con una función privada (Edge Function) que valida la sesión y el rol en cada petición, y registra cada cambio en una bitácora.
-- **Funciones:** resumen de cargas y conciliaciones, explorador de tablas con búsqueda, filtros, orden y navegación entre registros relacionados, editor de registros, papel de trabajo mensual de IVA exportable a Excel, ejecución de C1 (CFDI contra cuentas por pagar), C4 (pagos SAP contra banco), C5 (IVA acreditable en flujo de efectivo, nacional y de importación) y C7 (pago de pedimentos contra banco) con revisión de resultados y exportación a CSV.
+- **Funciones:** resumen de cargas y conciliaciones, explorador de tablas con búsqueda, filtros, orden y navegación entre registros relacionados, editor de registros, papel de trabajo mensual de IVA exportable a Excel, ejecución de C1 (CFDI contra cuentas por pagar), C2 (CFDI emitidos contra ingresos), C4 (pagos SAP contra banco), C5 (IVA acreditable en flujo de efectivo, nacional y de importación) y C7 (pago de pedimentos contra banco) con revisión de resultados y exportación a CSV.
 
 Los scripts de carga (CFDI, SAP, estados de cuenta y Data Stage), la función y las migraciones se mantienen en un repositorio privado.
 
