@@ -403,6 +403,7 @@
                 <div id="dbAlertasConteo" class="flex flex-wrap gap-2"></div>
                 <select id="dbAlertasEmpresa" aria-label="Empresa" class="ml-auto rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-900" hidden></select>
                 <span id="dbAlertasHoy" class="text-xs text-slate-500"></span>
+                <button id="dbAlertasExcel" type="button" class="rounded-lg border border-emerald-600/40 px-3 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-60 dark:text-emerald-300 dark:hover:bg-emerald-500/10">Exportar a Excel</button>
               </div>
               <ul id="dbAlertas" class="mt-4 divide-y divide-slate-100 dark:divide-slate-800"></ul>
               <button id="dbAlertasMas" type="button" class="mt-3 text-xs font-medium text-brand-700 hover:underline dark:text-brand-300" hidden></button>
@@ -2381,6 +2382,70 @@
       finally { b.disabled = false; }
     });
     $('#dbAlertasEmpresa').addEventListener('change', cargarAlertas);
+
+    // Exporta todas las alertas (no solo las visibles) y el historial de resúmenes guardados
+    $('#dbAlertasExcel').addEventListener('click', async function () {
+      var d = alertasDatos, btn = this;
+      if (!d) return;
+      btn.disabled = true; btn.textContent = 'Generando…';
+      try {
+        await cargarXLSX();
+        var X = window.XLSX, wb = X.utils.book_new(), r = d.resumen || {};
+        var lista = d.alertas || [], sel = $('#dbAlertasEmpresa'), op = sel.selectedOptions[0];
+        var emp = (st.resumen.empresas || []).filter(function (e) { return String(e.empresa_id) === String(sel.value); })[0];
+        var dma = function (v) { return v ? String(v).slice(0, 10).split('-').reverse().join('/') : ''; };
+        var num = function (v) { return v == null || v === '' ? null : Number(v); };
+        var situacion = function (a) {
+          if (a.dias == null) return '';
+          var n = Number(a.dias);
+          return n < 0 ? 'Vencida hace ' + (-n) + ' día' + (n === -1 ? '' : 's') : n === 0 ? 'Vence hoy' : 'Vence en ' + n + ' día' + (n === 1 ? '' : 's');
+        };
+        var enc = ['Severidad', 'Categoría', 'Regla', 'Título', 'Detalle', 'Estatus', 'Referencia', 'Fecha límite', 'Días al vencimiento', 'Plazo', 'Importe', 'Acción sugerida', 'Revisada por', 'Revisada en'];
+        var filas = lista.map(function (a) {
+          return [(SEV[a.severidad] || SEV.info).n, a.categoria || '', a.regla || '', a.titulo || '', a.detalle || '', a.estatus || '',
+            a.referencia == null ? '' : String(a.referencia), dma(a.fecha_limite), num(a.dias), situacion(a), num(a.importe),
+            a.revisado_por ? '' : (a.accion || ''), a.revisado_por || '', fechaHora(a.revisado_en)];
+        });
+        var cab = [
+          ['Alertas de hallazgos y vencimientos'],
+          ['Empresa', emp ? emp.razon_social + ' · ' + emp.rfc : (op ? op.textContent : '')],
+          ['Fecha de corte', dma(d.hoy)],
+          ['Conteo', conteoTxt(r) + ' (' + lista.length + ' alerta' + (lista.length === 1 ? '' : 's') + ')'],
+          ['Generado', fechaHora(new Date().toISOString())],
+          []
+        ];
+        var ws = X.utils.aoa_to_sheet(cab.concat([enc]).concat(filas.length ? filas : [['Sin alertas abiertas']]));
+        var r0 = cab.length + 1, cImp = enc.indexOf('Importe');
+        filas.forEach(function (f, i) { var k = X.utils.encode_cell({ r: r0 + i, c: cImp }); if (ws[k] && ws[k].t === 'n') ws[k].z = '#,##0.00;[Red]-#,##0.00'; });
+        if (filas.length) {
+          X.utils.sheet_add_aoa(ws, [['Total', null, null, null, null, null, null, null, null, null]], { origin: 'A' + (r0 + filas.length + 1) });
+          var kt = X.utils.encode_cell({ r: r0 + filas.length, c: cImp }), col = X.utils.encode_col(cImp);
+          ws[kt] = { t: 'n', f: 'SUM(' + col + (r0 + 1) + ':' + col + (r0 + filas.length) + ')', z: '#,##0.00;[Red]-#,##0.00',
+                     v: Math.round(filas.reduce(function (a, f) { return a + (f[cImp] || 0); }, 0) * 100) / 100 };
+          ws['!ref'] = X.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: r0 + filas.length, c: enc.length - 1 } });
+          ws['!autofilter'] = { ref: X.utils.encode_range({ s: { r: r0 - 1, c: 0 }, e: { r: r0 - 1 + filas.length, c: enc.length - 1 } }) };
+        }
+        ws['!cols'] = [10, 14, 7, 34, 50, 20, 18, 12, 10, 20, 15, 50, 26, 17].map(function (w) { return { wch: w }; });
+        X.utils.book_append_sheet(wb, ws, 'Alertas');
+
+        if (resumenes.length) {
+          var encR = ['Generado', 'Origen', 'Generado por', 'Fecha de corte', 'Críticas', 'Altas', 'Medias', 'Info', 'Revisadas', 'Nuevas', 'Resueltas'];
+          var filasR = resumenes.map(function (x) {
+            var c = x.conteo || {};
+            return [fechaHora(x.generado_en), x.origen === 'programado' ? 'Programado' : 'Manual', x.generado_por || '', dma(x.fecha_corte),
+              num(c.critica) || 0, num(c.alta) || 0, num(c.media) || 0, num(c.info) || 0, num(c.revisadas) || 0,
+              (x.nuevas || []).join('\n'), (x.resueltas || []).join('\n')];
+          });
+          var wr = X.utils.aoa_to_sheet([['Resúmenes guardados (últimos ' + resumenes.length + ')'], [], encR].concat(filasR));
+          wr['!cols'] = [17, 12, 26, 13, 9, 9, 9, 9, 10, 45, 45].map(function (w) { return { wch: w }; });
+          X.utils.book_append_sheet(wb, wr, 'Resúmenes');
+        }
+        var nombre = 'alertas_' + (emp ? emp.rfc : 'empresa') + '_' + String(d.hoy).slice(0, 10) + '.xlsx';
+        X.writeFile(wb, nombre);
+        toast('Excel descargado: ' + nombre);
+      } catch (e) { manejarError(e); }
+      finally { btn.disabled = false; btn.textContent = 'Exportar a Excel'; }
+    });
 
     /* ---------------- Papel de trabajo de retenciones ---------------- */
     async function generarPapelRetenciones() {
