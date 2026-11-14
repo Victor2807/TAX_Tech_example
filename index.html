@@ -1958,7 +1958,8 @@
       var filas = r.filas.filter(function (f) { return !st.estatusFiltro || f.estatus === st.estatusFiltro; });
       var puedeRevisar = st.usuario && st.usuario.rol !== 'LECTOR';
       $('#c1Body').innerHTML = filas.map(function (f) {
-        var rev = f.revisado_por ? '<div class="text-xs text-emerald-700 dark:text-emerald-400">✓ ' + esc(f.revisado_por) + '</div>' : '';
+        var rev = f.revisado_por ? '<div class="text-xs text-emerald-700 dark:text-emerald-400">✓ ' + esc(f.revisado_por) +
+          (f.revision_heredada_de ? ' <span class="text-slate-500" title="Revisión conservada del resultado #' + esc(f.revision_heredada_de) + ' de la ejecución anterior: el hallazgo no cambió">· conservada</span>' : '') + '</div>' : '';
         return '<tr data-r="' + f.resultado_id + '">' +
           COLUMNAS[regla].map(function (c) { return '<td class="px-4 py-3 ' + c[1] + '">' + c[2](f) + '</td>'; }).join('') +
           '<td class="px-4 py-3 text-center text-xs">' + (f.nivel_cruce ? 'N' + f.nivel_cruce : '—') + '</td>' +
