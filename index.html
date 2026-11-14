@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>TAX Tech · Conciliación Fiscal México</title>
+  <title>TAX Tech Conciliación Fiscal</title>
   <meta name="description" content="Conciliación automatizada de IVA, retenciones y contribuciones de comercio exterior cruzando CFDI, SAP, bancos y Data Stage." />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -11,12 +11,18 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
   <script>
-    // Tema: se aplica antes de pintar para evitar parpadeo
+    // Tema: respeta data-theme del visor, luego la preferencia guardada, luego el sistema
     (function () {
-      var t = null;
-      try { t = localStorage.getItem('taxtech-theme'); } catch (e) {}
-      var dark = t ? t === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (dark) document.documentElement.classList.add('dark');
+      var root = document.documentElement;
+      function apply() {
+        var dt = root.getAttribute('data-theme'), t = null;
+        try { t = localStorage.getItem('taxtech-theme'); } catch (e) {}
+        var dark = dt ? dt === 'dark' : (t ? t === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches);
+        root.classList.toggle('dark', dark);
+      }
+      apply();
+      new MutationObserver(apply).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', apply);
     })();
   </script>
   <script src="https://cdn.tailwindcss.com/3.4.16"></script>
@@ -45,6 +51,12 @@
   </script>
 
   <style>
+    :root { --bg: #ffffff; --fg: #1e293b; }
+    @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #020617; --fg: #e2e8f0; color-scheme: dark; } }
+    :root[data-theme="dark"] { --bg: #020617; --fg: #e2e8f0; color-scheme: dark; }
+    :root.dark { --bg: #020617; --fg: #e2e8f0; color-scheme: dark; }
+    :root:not(.dark) { --bg: #ffffff; --fg: #1e293b; color-scheme: light; }
+    body { background: var(--bg); color: var(--fg); }
     body { font-feature-settings: "cv11", "ss01"; }
     .grid-bg {
       background-image:
@@ -54,7 +66,7 @@
       mask-image: radial-gradient(ellipse at 50% 0%, #000 30%, transparent 75%);
       -webkit-mask-image: radial-gradient(ellipse at 50% 0%, #000 30%, transparent 75%);
     }
-    .reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s ease; }
+    .reveal { transition: transform .7s ease; }
     .reveal.in { opacity: 1; transform: none; }
     .flow-line {
       background: linear-gradient(90deg, transparent, #10b981, transparent);
@@ -285,7 +297,7 @@
           <div class="min-w-0 rounded-2xl border border-white/10 bg-white/5 backdrop-blur">
             <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
               <div class="flex flex-wrap gap-2 text-xs" id="kpis"></div>
-              <button id="csvBtn" class="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-white/10">Exportar CSV</button>
+              <button id="csvBtn" class="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-white/10">Copiar CSV</button>
             </div>
             <div class="overflow-x-auto">
               <table class="w-full min-w-[760px] text-left text-sm">
@@ -770,12 +782,15 @@
         return [r.doc, r.rfc, r.erp != null ? r.erp.toFixed(2) : (r.bimp ? r.bimp.toFixed(2) : ''), r.cfdi != null ? r.cfdi.toFixed(2) : '', r.nivel || '', r.banco, r.st]
           .map(function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; }).join(',');
       }));
-      var blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
-      var a = document.createElement('a');
-      a.href = URL.createObjectURL(blob); a.download = 'conciliacion_demo.csv';
-      document.body.appendChild(a); a.click(); a.remove();
-      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
-      toast('CSV exportado');
+      var text = lines.join('\n');
+      var fallback = function () {
+        var ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select();
+        try { document.execCommand('copy'); toast('CSV copiado al portapapeles'); } catch (e) { toast('Selecciona y copia el texto manualmente'); }
+        ta.remove();
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { toast('CSV copiado al portapapeles'); }, fallback);
+      } else fallback();
     });
 
     /* ---------------- Flujo ---------------- */
