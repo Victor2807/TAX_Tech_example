@@ -1,0 +1,851 @@
+<!doctype html>
+<html lang="es" class="scroll-smooth">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>TAX Tech · Conciliación Fiscal México</title>
+  <meta name="description" content="Conciliación automatizada de IVA, retenciones y contribuciones de comercio exterior cruzando CFDI, SAP, bancos y Data Stage." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <script>
+    // Tema: se aplica antes de pintar para evitar parpadeo
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem('taxtech-theme'); } catch (e) {}
+      var dark = t ? t === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (dark) document.documentElement.classList.add('dark');
+    })();
+  </script>
+  <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+  <script>
+    if (window.tailwind) tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#ecfdf5', 100: '#d1fae5', 200: '#a7f3d0', 300: '#6ee7b7', 400: '#34d399',
+              500: '#10b981', 600: '#059669', 700: '#047857', 800: '#065f46', 900: '#064e3b',
+            },
+            gold: { 300: '#fcd34d', 400: '#fbbf24', 500: '#f59e0b' },
+          },
+          boxShadow: {
+            glow: '0 0 0 1px rgba(16,185,129,.25), 0 20px 60px -20px rgba(16,185,129,.45)',
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    body { font-feature-settings: "cv11", "ss01"; }
+    .grid-bg {
+      background-image:
+        linear-gradient(to right, rgba(100,116,139,.08) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(100,116,139,.08) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(ellipse at 50% 0%, #000 30%, transparent 75%);
+      -webkit-mask-image: radial-gradient(ellipse at 50% 0%, #000 30%, transparent 75%);
+    }
+    .reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s ease; }
+    .reveal.in { opacity: 1; transform: none; }
+    .flow-line {
+      background: linear-gradient(90deg, transparent, #10b981, transparent);
+      background-size: 200% 100%;
+      animation: flow 2.4s linear infinite;
+    }
+    .flow-line-v {
+      background: linear-gradient(180deg, transparent, #10b981, transparent);
+      background-size: 100% 200%;
+      animation: flowv 2.4s linear infinite;
+    }
+    @keyframes flow { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+    @keyframes flowv { from { background-position: 0 200%; } to { background-position: 0 -200%; } }
+    .card-glow { position: relative; }
+    .card-glow::before {
+      content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+      background: radial-gradient(400px circle at var(--mx, 50%) var(--my, 50%), rgba(16,185,129,.55), transparent 40%);
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude;
+      opacity: 0; transition: opacity .3s; pointer-events: none;
+    }
+    .card-glow:hover::before { opacity: 1; }
+    input[type=range] { accent-color: #10b981; }
+    @media (prefers-reduced-motion: reduce) {
+      .reveal { opacity: 1; transform: none; transition: none; }
+      .flow-line, .flow-line-v { animation: none; }
+      html { scroll-behavior: auto; }
+    }
+  </style>
+</head>
+
+<body class="bg-white text-slate-800 dark:bg-slate-950 dark:text-slate-200 antialiased font-sans selection:bg-brand-500/30">
+
+  <!-- ===================== NAV ===================== -->
+  <header id="nav" class="fixed inset-x-0 top-0 z-50 transition-all duration-300">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6">
+      <div class="mt-3 flex h-14 items-center justify-between rounded-2xl border border-transparent px-3 transition-all duration-300" id="navInner">
+        <a href="#inicio" class="flex items-center gap-2 font-semibold tracking-tight">
+          <span class="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-brand-400 to-brand-700 text-white shadow-glow">
+            <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>
+          </span>
+          <span>TAX<span class="text-brand-500">Tech</span></span>
+        </a>
+        <nav class="hidden items-center gap-1 text-sm md:flex" id="navLinks">
+          <a href="#objetivos" class="rounded-lg px-3 py-1.5 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">Objetivos</a>
+          <a href="#fuentes" class="rounded-lg px-3 py-1.5 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">Fuentes</a>
+          <a href="#conciliaciones" class="rounded-lg px-3 py-1.5 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">Conciliaciones</a>
+          <a href="#simulador" class="rounded-lg px-3 py-1.5 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">Simulador</a>
+          <a href="#flujo" class="rounded-lg px-3 py-1.5 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">Flujo</a>
+          <a href="#entregables" class="rounded-lg px-3 py-1.5 text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">Entregables</a>
+        </nav>
+        <div class="flex items-center gap-2">
+          <button id="themeBtn" aria-label="Cambiar tema" class="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900">
+            <svg class="h-4 w-4 dark:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+            <svg class="hidden h-4 w-4 dark:block" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+          </button>
+          <a href="#simulador" class="hidden rounded-lg bg-brand-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-500 sm:inline-block">Probar demo</a>
+          <button id="menuBtn" aria-label="Abrir menú" class="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 dark:border-slate-800 md:hidden">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+          </button>
+        </div>
+      </div>
+      <div id="mobileMenu" class="mt-2 hidden rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-xl backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 md:hidden">
+        <a href="#objetivos" class="block rounded-lg px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800">Objetivos</a>
+        <a href="#fuentes" class="block rounded-lg px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800">Fuentes</a>
+        <a href="#conciliaciones" class="block rounded-lg px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800">Conciliaciones</a>
+        <a href="#simulador" class="block rounded-lg px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800">Simulador</a>
+        <a href="#flujo" class="block rounded-lg px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800">Flujo</a>
+        <a href="#entregables" class="block rounded-lg px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800">Entregables</a>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- ===================== HERO ===================== -->
+    <section id="inicio" class="relative overflow-hidden pt-32 pb-20 sm:pt-40 sm:pb-28">
+      <div class="grid-bg absolute inset-0 -z-10"></div>
+      <div class="absolute left-1/2 top-0 -z-10 h-[520px] w-[900px] -translate-x-1/2 rounded-full bg-brand-500/20 blur-3xl dark:bg-brand-500/15"></div>
+
+      <div class="mx-auto max-w-7xl px-4 sm:px-6">
+        <div class="mx-auto max-w-3xl text-center">
+          <span class="reveal inline-flex items-center gap-2 rounded-full border border-brand-500/30 bg-brand-500/10 px-3 py-1 text-xs font-medium text-brand-700 dark:text-brand-300">
+            <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-brand-500"></span>
+            Conciliación fiscal · México
+          </span>
+          <h1 class="reveal mt-6 text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-6xl">
+            Cada peso, cada CFDI,<br />
+            <span class="bg-gradient-to-r from-brand-500 via-emerald-400 to-gold-400 bg-clip-text text-transparent">conciliado antes de declarar.</span>
+          </h1>
+          <p class="reveal mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-600 dark:text-slate-400">
+            Automatiza la conciliación de <strong class="text-slate-900 dark:text-white">IVA, ISR retenido y contribuciones de comercio exterior</strong>
+            cruzando CFDI, SAP, estados de cuenta bancarios y pedimentos del Data Stage. Encuentra diferencias a tiempo y deja evidencia lista para auditoría.
+          </p>
+          <div class="reveal mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <a href="#simulador" class="group inline-flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3 font-semibold text-white shadow-glow transition hover:bg-brand-500">
+              Ejecutar conciliación demo
+              <svg class="h-4 w-4 transition group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </a>
+            <a href="#fuentes" class="rounded-xl border border-slate-300 px-6 py-3 font-semibold text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-900">Ver fuentes de datos</a>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="reveal mx-auto mt-20 grid max-w-4xl grid-cols-2 gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 dark:border-slate-800 dark:bg-slate-800 sm:grid-cols-4">
+          <div class="bg-white p-6 text-center dark:bg-slate-950"><div class="text-3xl font-bold text-slate-900 dark:text-white"><span data-count="4">0</span></div><div class="mt-1 text-sm text-slate-500">Fuentes integradas</div></div>
+          <div class="bg-white p-6 text-center dark:bg-slate-950"><div class="text-3xl font-bold text-slate-900 dark:text-white"><span data-count="8">0</span></div><div class="mt-1 text-sm text-slate-500">Conciliaciones C1–C8</div></div>
+          <div class="bg-white p-6 text-center dark:bg-slate-950"><div class="text-3xl font-bold text-slate-900 dark:text-white"><span data-count="4">0</span></div><div class="mt-1 text-sm text-slate-500">Niveles de cruce</div></div>
+          <div class="bg-white p-6 text-center dark:bg-slate-950"><div class="text-3xl font-bold text-slate-900 dark:text-white"><span data-count="9">0</span></div><div class="mt-1 text-sm text-slate-500">Estatus de resultado</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== OBJETIVOS ===================== -->
+    <section id="objetivos" class="py-24">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6">
+        <div class="reveal max-w-2xl">
+          <p class="text-sm font-semibold uppercase tracking-widest text-brand-600 dark:text-brand-400">Objetivos</p>
+          <h2 class="mt-3 text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">Cumplimiento fiscal sin hojas de cálculo interminables</h2>
+        </div>
+        <div class="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3" id="objGrid"></div>
+      </div>
+    </section>
+
+    <!-- ===================== FUENTES ===================== -->
+    <section id="fuentes" class="border-y border-slate-200 bg-slate-50 py-24 dark:border-slate-900 dark:bg-slate-900/40">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6">
+        <div class="reveal max-w-2xl">
+          <p class="text-sm font-semibold uppercase tracking-widest text-brand-600 dark:text-brand-400">Fuentes de datos</p>
+          <h2 class="mt-3 text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">Cuatro fuentes, un modelo de datos común</h2>
+          <p class="mt-4 text-slate-600 dark:text-slate-400">Selecciona una fuente para ver su origen, formato, campos clave y para qué se usa.</p>
+        </div>
+
+        <div class="reveal mt-10 grid gap-6 lg:grid-cols-[280px_1fr]">
+          <div role="tablist" aria-label="Fuentes" class="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible" id="srcTabs"></div>
+          <div id="srcPanel" class="min-w-0 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950 sm:p-8"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== CONCILIACIONES ===================== -->
+    <section id="conciliaciones" class="py-24">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6">
+        <div class="reveal flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div class="max-w-2xl">
+            <p class="text-sm font-semibold uppercase tracking-widest text-brand-600 dark:text-brand-400">Conciliaciones</p>
+            <h2 class="mt-3 text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">Ocho cruces que cubren todo el ciclo fiscal</h2>
+          </div>
+          <div class="flex flex-wrap gap-2" id="concFilters"></div>
+        </div>
+
+        <div class="reveal mt-10 grid gap-4 md:grid-cols-2" id="concGrid"></div>
+
+        <!-- Reglas -->
+        <div class="mt-20 grid gap-6 lg:grid-cols-2">
+          <div class="reveal rounded-2xl border border-slate-200 p-6 dark:border-slate-800 sm:p-8">
+            <h3 class="text-xl font-semibold text-slate-900 dark:text-white">Reglas de cruce</h3>
+            <ul class="mt-5 space-y-4 text-sm text-slate-600 dark:text-slate-400">
+              <li class="flex gap-3"><span class="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md bg-brand-500/10 text-brand-600 dark:text-brand-400">$</span><span><strong class="text-slate-900 dark:text-white">Tolerancia de importe</strong> configurable, por ejemplo ±1.00 MXN por redondeo.</span></li>
+              <li class="flex gap-3"><span class="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md bg-brand-500/10 text-brand-600 dark:text-brand-400">⏱</span><span><strong class="text-slate-900 dark:text-white">Tolerancia de fecha</strong> configurable, por ejemplo ±3 días hábiles entre el pago en el ERP y el banco.</span></li>
+              <li class="flex gap-3"><span class="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-md bg-brand-500/10 text-brand-600 dark:text-brand-400">¤</span><span><strong class="text-slate-900 dark:text-white">Moneda extranjera:</strong> se compara en moneda original y en MXN con el tipo de cambio del CFDI, del ERP y del DOF.</span></li>
+            </ul>
+          </div>
+          <div class="reveal rounded-2xl border border-slate-200 p-6 dark:border-slate-800 sm:p-8">
+            <h3 class="text-xl font-semibold text-slate-900 dark:text-white">Cruce por niveles</h3>
+            <ol class="mt-5 space-y-3" id="levels"></ol>
+          </div>
+        </div>
+
+        <div class="reveal mt-6 rounded-2xl border border-slate-200 p-6 dark:border-slate-800 sm:p-8">
+          <h3 class="text-xl font-semibold text-slate-900 dark:text-white">Estatus de resultado</h3>
+          <div class="mt-5 flex flex-wrap gap-2" id="statusChips"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== SIMULADOR ===================== -->
+    <section id="simulador" class="relative overflow-hidden border-y border-slate-200 bg-slate-950 py-24 text-slate-200 dark:border-slate-900">
+      <div class="absolute -right-40 top-10 h-96 w-96 rounded-full bg-brand-500/20 blur-3xl"></div>
+      <div class="absolute -left-40 bottom-0 h-96 w-96 rounded-full bg-gold-500/10 blur-3xl"></div>
+      <div class="relative mx-auto max-w-7xl px-4 sm:px-6">
+        <div class="reveal max-w-2xl">
+          <p class="text-sm font-semibold uppercase tracking-widest text-brand-400">Simulador interactivo</p>
+          <h2 class="mt-3 text-3xl font-bold tracking-tight text-white sm:text-4xl">Mueve las tolerancias y mira cómo cambia el resultado</h2>
+          <p class="mt-4 text-slate-400">Motor de conciliación C1 + C4 de ejemplo: cuentas por pagar del ERP contra CFDI recibidos y estado de cuenta bancario. <span class="text-gold-400">Todos los datos son ficticios.</span></p>
+        </div>
+
+        <div class="reveal mt-10 grid gap-6 lg:grid-cols-[320px_1fr]">
+          <!-- Controles -->
+          <div class="space-y-6 rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur">
+            <div>
+              <div class="flex items-center justify-between text-sm"><label for="tolAmt" class="font-medium text-white">Tolerancia de importe</label><span class="font-mono text-brand-300" id="tolAmtVal">±1.00</span></div>
+              <input id="tolAmt" type="range" min="0" max="2" step="0.1" value="1" class="mt-3 w-full" />
+            </div>
+            <div>
+              <div class="flex items-center justify-between text-sm"><label for="tolDays" class="font-medium text-white">Tolerancia de fecha</label><span class="font-mono text-brand-300" id="tolDaysVal">±3 días</span></div>
+              <input id="tolDays" type="range" min="0" max="7" step="1" value="3" class="mt-3 w-full" />
+            </div>
+            <label class="flex items-center justify-between gap-3 text-sm">
+              <span class="font-medium text-white">Nivel 2: RFC + importe + fecha</span>
+              <input id="useL2" type="checkbox" checked class="h-4 w-4 accent-emerald-500" />
+            </label>
+            <label class="flex items-center justify-between gap-3 text-sm">
+              <span class="font-medium text-white">Validar lista 69-B</span>
+              <input id="use69" type="checkbox" checked class="h-4 w-4 accent-emerald-500" />
+            </label>
+            <button id="runBtn" class="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-brand-400">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+              Ejecutar conciliación
+            </button>
+
+            <div class="flex items-center gap-5 border-t border-white/10 pt-6">
+              <div class="relative h-24 w-24 shrink-0">
+                <svg viewBox="0 0 36 36" class="h-24 w-24 -rotate-90">
+                  <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="3.2" />
+                  <circle id="donut" cx="18" cy="18" r="15.9" fill="none" stroke="#10b981" stroke-width="3.2" stroke-linecap="round" stroke-dasharray="0 100" style="transition: stroke-dasharray .8s ease" />
+                </svg>
+                <div class="absolute inset-0 grid place-items-center"><span class="text-xl font-bold text-white" id="pct">0%</span></div>
+              </div>
+              <div class="text-sm">
+                <div class="text-slate-400">Conciliado</div>
+                <div class="mt-2 text-slate-400">Importe en diferencias</div>
+                <div class="font-mono text-lg font-semibold text-gold-400" id="diffAmt">$0.00</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Resultados -->
+          <div class="min-w-0 rounded-2xl border border-white/10 bg-white/5 backdrop-blur">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-4">
+              <div class="flex flex-wrap gap-2 text-xs" id="kpis"></div>
+              <button id="csvBtn" class="rounded-lg border border-white/15 px-3 py-1.5 text-xs font-medium text-slate-300 hover:bg-white/10">Exportar CSV</button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[760px] text-left text-sm">
+                <thead class="text-xs uppercase tracking-wider text-slate-500">
+                  <tr>
+                    <th class="px-5 py-3 font-medium">Doc. ERP</th>
+                    <th class="px-5 py-3 font-medium">RFC</th>
+                    <th class="px-5 py-3 font-medium text-right">Importe ERP</th>
+                    <th class="px-5 py-3 font-medium text-right">Importe CFDI</th>
+                    <th class="px-5 py-3 font-medium text-center">Nivel</th>
+                    <th class="px-5 py-3 font-medium text-center">Banco</th>
+                    <th class="px-5 py-3 font-medium">Estatus</th>
+                  </tr>
+                </thead>
+                <tbody id="simBody" class="divide-y divide-white/5"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== FLUJO ===================== -->
+    <section id="flujo" class="py-24">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6">
+        <div class="reveal mx-auto max-w-2xl text-center">
+          <p class="text-sm font-semibold uppercase tracking-widest text-brand-600 dark:text-brand-400">Flujo del proceso</p>
+          <h2 class="mt-3 text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">De datos crudos a papeles de trabajo</h2>
+        </div>
+
+        <div class="reveal mt-14">
+          <div class="grid grid-cols-2 gap-3 sm:grid-cols-4" id="flowSources"></div>
+          <div class="mx-auto my-3 h-12 w-0.5 flow-line-v"></div>
+          <div class="mx-auto max-w-3xl rounded-2xl border border-brand-500/30 bg-gradient-to-b from-brand-500/10 to-transparent p-2">
+            <ol class="grid gap-2 sm:grid-cols-5" id="flowSteps"></ol>
+          </div>
+          <div class="mx-auto my-3 h-12 w-0.5 flow-line-v"></div>
+          <div class="mx-auto grid max-w-3xl grid-cols-1 gap-3 sm:grid-cols-3">
+            <div class="rounded-xl bg-slate-900 px-4 py-3 text-center text-sm font-medium text-white dark:bg-white dark:text-slate-900">Reportes de diferencias</div>
+            <div class="rounded-xl bg-slate-900 px-4 py-3 text-center text-sm font-medium text-white dark:bg-white dark:text-slate-900">Papeles de trabajo</div>
+            <div class="rounded-xl bg-slate-900 px-4 py-3 text-center text-sm font-medium text-white dark:bg-white dark:text-slate-900">DIOT</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== ENTREGABLES ===================== -->
+    <section id="entregables" class="border-t border-slate-200 bg-slate-50 py-24 dark:border-slate-900 dark:bg-slate-900/40">
+      <div class="mx-auto max-w-7xl px-4 sm:px-6">
+        <div class="reveal max-w-2xl">
+          <p class="text-sm font-semibold uppercase tracking-widest text-brand-600 dark:text-brand-400">Entregables</p>
+          <h2 class="mt-3 text-3xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-4xl">Lo que obtiene el área fiscal cada mes</h2>
+        </div>
+        <div class="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-5" id="delivGrid"></div>
+
+        <div class="mt-20 grid gap-6 lg:grid-cols-2">
+          <!-- Estructura -->
+          <div class="reveal min-w-0 overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-xl">
+            <div class="flex items-center gap-1.5 border-b border-white/10 px-4 py-3">
+              <span class="h-2.5 w-2.5 rounded-full bg-red-400/80"></span><span class="h-2.5 w-2.5 rounded-full bg-amber-400/80"></span><span class="h-2.5 w-2.5 rounded-full bg-emerald-400/80"></span>
+              <span class="ml-3 font-mono text-xs text-slate-500">estructura del repositorio</span>
+            </div>
+            <pre class="overflow-x-auto p-5 font-mono text-[12.5px] leading-6 text-slate-300"><span class="text-brand-400">TAX_Tech_example/</span>
+├── <span class="text-sky-300">data/</span>
+│   ├── <span class="text-sky-300">raw/</span>            <span class="text-slate-500"># Insumos originales (no se versionan)</span>
+│   │   ├── cfdi/
+│   │   ├── erp/
+│   │   ├── bancos/
+│   │   └── datastage/
+│   └── <span class="text-sky-300">processed/</span>      <span class="text-slate-500"># Datos normalizados</span>
+├── <span class="text-sky-300">src/</span>
+│   ├── ingestion/      <span class="text-slate-500"># XML CFDI, SAP, MT940/CAMT, Data Stage</span>
+│   ├── normalization/  <span class="text-slate-500"># Modelo de datos común</span>
+│   ├── reconciliation/ <span class="text-slate-500"># Reglas C1–C8</span>
+│   └── reporting/      <span class="text-slate-500"># Papeles de trabajo</span>
+├── <span class="text-sky-300">config/</span>             <span class="text-slate-500"># Tolerancias y mapeos</span>
+├── <span class="text-sky-300">tests/</span>
+└── README.md</pre>
+          </div>
+
+          <!-- Seguridad + normativa -->
+          <div class="grid gap-6">
+            <div class="reveal rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950 sm:p-8">
+              <div class="flex items-center gap-3">
+                <span class="grid h-10 w-10 place-items-center rounded-xl bg-brand-500/10 text-brand-600 dark:text-brand-400">
+                  <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
+                </span>
+                <h3 class="text-xl font-semibold text-slate-900 dark:text-white">Seguridad y confidencialidad</h3>
+              </div>
+              <ul class="mt-5 space-y-3 text-sm text-slate-600 dark:text-slate-400">
+                <li>• La información fiscal y bancaria es confidencial: los datos reales <strong class="text-slate-900 dark:text-white">no se versionan</strong> (<code class="font-mono text-xs">data/raw/</code> en <code class="font-mono text-xs">.gitignore</code>).</li>
+                <li>• Credenciales (e.firma, CIEC, ERP y banca) fuera del repositorio, en un gestor de secretos.</li>
+                <li>• Pruebas y demos solo con datos ficticios o anonimizados.</li>
+              </ul>
+            </div>
+            <div class="reveal rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950 sm:p-8">
+              <div class="flex items-center gap-3">
+                <span class="grid h-10 w-10 place-items-center rounded-xl bg-gold-400/15 text-gold-500">
+                  <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18M5 7h14M7 7l-3 7a3 3 0 0 0 6 0zM17 7l-3 7a3 3 0 0 0 6 0z"/></svg>
+                </span>
+                <h3 class="text-xl font-semibold text-slate-900 dark:text-white">Marco normativo</h3>
+              </div>
+              <ul class="mt-5 grid gap-2 text-sm text-slate-600 dark:text-slate-400 sm:grid-cols-2">
+                <li class="rounded-lg bg-slate-100 px-3 py-2 dark:bg-slate-900">Ley del IVA · art. 5 (flujo de efectivo)</li>
+                <li class="rounded-lg bg-slate-100 px-3 py-2 dark:bg-slate-900">CFF · arts. 29, 29-A, 69, 69-B</li>
+                <li class="rounded-lg bg-slate-100 px-3 py-2 dark:bg-slate-900">RMF vigente y Anexo 20 (CFDI)</li>
+                <li class="rounded-lg bg-slate-100 px-3 py-2 dark:bg-slate-900">Ley Aduanera y Anexo 22</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-slate-200 py-10 dark:border-slate-900">
+    <div class="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 px-4 text-sm text-slate-500 sm:flex-row sm:px-6">
+      <div>TAX<span class="text-brand-500">Tech</span> · Conciliación fiscal México</div>
+      <p class="text-center sm:text-right">Proyecto de ejemplo con fines demostrativos. No sustituye la asesoría fiscal profesional.</p>
+    </div>
+  </footer>
+
+  <!-- Toast -->
+  <div id="toast" class="pointer-events-none fixed bottom-6 left-1/2 z-50 -translate-x-1/2 translate-y-4 rounded-xl bg-slate-900 px-4 py-2.5 text-sm text-white opacity-0 shadow-xl transition-all duration-300 dark:bg-white dark:text-slate-900"></div>
+
+  <script>
+  (function () {
+    'use strict';
+    var $ = function (s, r) { return (r || document).querySelector(s); };
+    var $$ = function (s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); };
+    var esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+    var mxn = function (n) { return '$' + n.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+
+    /* ---------------- Tema ---------------- */
+    $('#themeBtn').addEventListener('click', function () {
+      var dark = document.documentElement.classList.toggle('dark');
+      try { localStorage.setItem('taxtech-theme', dark ? 'dark' : 'light'); } catch (e) {}
+    });
+
+    /* ---------------- Nav ---------------- */
+    var navInner = $('#navInner');
+    var onScroll = function () {
+      var s = window.scrollY > 20;
+      navInner.classList.toggle('bg-white/80', s);
+      navInner.classList.toggle('dark:bg-slate-950/80', s);
+      navInner.classList.toggle('backdrop-blur-xl', s);
+      navInner.classList.toggle('shadow-lg', s);
+      navInner.classList.toggle('border-slate-200', s);
+      navInner.classList.toggle('dark:border-slate-800', s);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
+    $('#menuBtn').addEventListener('click', function () { $('#mobileMenu').classList.toggle('hidden'); });
+    $$('#mobileMenu a').forEach(function (a) { a.addEventListener('click', function () { $('#mobileMenu').classList.add('hidden'); }); });
+
+    // Resaltado de sección activa
+    var sections = ['objetivos', 'fuentes', 'conciliaciones', 'simulador', 'flujo', 'entregables'];
+    var spy = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        $$('#navLinks a').forEach(function (a) {
+          var on = a.getAttribute('href') === '#' + e.target.id;
+          a.classList.toggle('bg-brand-500/10', on);
+          a.classList.toggle('!text-brand-600', on);
+          a.classList.toggle('dark:!text-brand-400', on);
+        });
+      });
+    }, { rootMargin: '-45% 0px -50% 0px' });
+    sections.forEach(function (id) { spy.observe(document.getElementById(id)); });
+
+    /* ---------------- Datos (del README) ---------------- */
+    var OBJETIVOS = [
+      { i: '🧾', t: 'Respaldo documental', d: 'Todo gasto o ingreso registrado en el ERP tiene un CFDI vigente que lo respalda, y todo CFDI está registrado.' },
+      { i: '💸', t: 'IVA en flujo de efectivo', d: 'IVA efectivamente pagado o cobrado cruzando CFDI PUE/PPD, complementos de pago (REP) y bancos.' },
+      { i: '🚢', t: 'Comercio exterior', d: 'IVA y contribuciones de pedimentos conciliados contra la contabilidad y los pagos bancarios.' },
+      { i: '🚨', t: 'Riesgos fiscales', d: 'CFDI cancelados, proveedores en listas 69 y 69-B, diferencias de tipo de cambio y pagos sin REP.' },
+      { i: '📑', t: 'Insumos de declaración', d: 'DIOT, declaración mensual de IVA y contabilidad electrónica listos desde la misma base.' },
+      { i: '🔍', t: 'Evidencia de auditoría', d: 'Papeles de trabajo trazables para revisiones del SAT o para el dictamen fiscal.' },
+    ];
+
+    var FUENTES = [
+      {
+        k: 'cfdi', n: 'CFDI (SAT)', s: 'XML 4.0 emitidos y recibidos', c: 'from-sky-400 to-blue-600',
+        rows: [
+          ['Origen', 'Descarga masiva del SAT (web service), portal o PAC'],
+          ['Formato', 'XML CFDI 4.0 (3.3 para periodos históricos) + metadata'],
+          ['Tipos', 'Ingreso (I), Egreso (E), Pago (P), Nómina (N), Traslado (T)'],
+          ['Complementos', 'Recepción de Pagos 2.0, Comercio Exterior, Nómina 1.2'],
+          ['Validación', 'Estatus en el SAT (vigente/cancelado) y lista 69-B del emisor'],
+        ],
+        campos: ['UUID', 'RFC emisor', 'RFC receptor', 'Fecha', 'MetodoPago', 'FormaPago', 'Moneda', 'TipoCambio', 'SubTotal', 'Traslados', 'Retenciones', 'UsoCFDI', 'CfdiRelacionados'],
+      },
+      {
+        k: 'erp', n: 'ERP (SAP)', s: 'ECC / S/4HANA', c: 'from-indigo-400 to-violet-600',
+        rows: [
+          ['Origen', 'ECC: BKPF/BSEG, BSIK/BSAK, BSID/BSAD · S/4HANA: ACDOCA'],
+          ['Formato', 'CSV / Excel / extracción vía RFC u OData'],
+          ['Uso', 'Base del registro contable de ingresos, gastos, IVA y pagos'],
+          ['Nota', 'La ubicación del UUID depende de la localización México configurada'],
+        ],
+        campos: ['Sociedad', 'Ejercicio', 'Documento', 'Fecha contab.', 'Proveedor/Cliente', 'RFC', 'Referencia', 'UUID', 'Importe', 'Moneda', 'Tipo de cambio', 'Indicador IVA', 'Cuenta de mayor', 'Doc. compensación'],
+      },
+      {
+        k: 'banco', n: 'Estados de cuenta', s: 'MT940 · CAMT.053 · CSV', c: 'from-emerald-400 to-teal-600',
+        rows: [
+          ['Origen', 'Banca electrónica / host-to-host'],
+          ['Formato', 'MT940, CAMT.053, CSV o Excel según el banco'],
+          ['Uso', 'Comprobar el pago efectivo (IVA en flujo de efectivo) y el pago de contribuciones de comercio exterior'],
+        ],
+        campos: ['Cuenta', 'Fecha valor', 'Importe', 'Cargo/Abono', 'Referencia', 'Concepto', 'Beneficiario/Ordenante', 'Clave de rastreo SPEI'],
+      },
+      {
+        k: 'ds', n: 'Data Stage', s: 'Pedimentos de importación', c: 'from-amber-400 to-orange-600',
+        rows: [
+          ['Origen', 'Data Stage del SAT (información de pedimentos de la empresa)'],
+          ['Formato', 'Archivos de texto delimitados por |, un archivo por tipo de registro'],
+          ['Registros', '501 datos generales · 505 facturas · 506 fechas · 510 contribuciones · 551 partidas · 557 contribuciones por partida · 701 rectificaciones'],
+          ['Uso', 'Sustentar el IVA acreditable de importación y conciliar contra la contabilidad y el banco'],
+        ],
+        campos: ['Patente', 'Pedimento', 'Aduana', 'Clave de pedimento', 'Fecha de pago', 'Tipo de cambio', 'Valor aduana', 'IVA', 'IGI', 'DTA', 'PRV', 'Forma de pago'],
+      },
+    ];
+
+    var CONC = [
+      { id: 'C1', t: 'CFDI recibidos vs cuentas por pagar', f: ['cfdi', 'erp'], k: 'UUID; si falta: RFC + fecha + importe' },
+      { id: 'C2', t: 'CFDI emitidos vs ingresos', f: ['cfdi', 'erp'], k: 'UUID; serie/folio' },
+      { id: 'C3', t: 'Pagos vs REP', f: ['erp', 'cfdi'], k: 'UUID del documento relacionado + importe pagado' },
+      { id: 'C4', t: 'Pagos ERP vs banco', f: ['erp', 'banco'], k: 'Importe + fecha (con tolerancia) + referencia' },
+      { id: 'C5', t: 'IVA acreditable en flujo de efectivo', f: ['cfdi', 'banco', 'erp'], k: 'Resultado de C1 + C3 + C4' },
+      { id: 'C6', t: 'Pedimentos vs contabilidad', f: ['ds', 'erp'], k: 'Número de pedimento (patente-aduana-número)' },
+      { id: 'C7', t: 'Pago de pedimentos vs banco', f: ['ds', 'banco'], k: 'Importe de contribuciones (510) + fecha de pago' },
+      { id: 'C8', t: 'Facturas de importación vs pedimento', f: ['ds', 'erp'], k: 'Número de factura del proveedor extranjero (505)' },
+    ];
+    var FMETA = {
+      cfdi: { n: 'CFDI', c: 'bg-sky-500/10 text-sky-700 dark:text-sky-300 ring-sky-500/30' },
+      erp: { n: 'ERP', c: 'bg-violet-500/10 text-violet-700 dark:text-violet-300 ring-violet-500/30' },
+      banco: { n: 'Banco', c: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-emerald-500/30' },
+      ds: { n: 'Data Stage', c: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 ring-amber-500/30' },
+    };
+
+    var STATUS = {
+      CONCILIADO: { c: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 ring-emerald-500/30', d: 'Cruce correcto en todas las fuentes' },
+      DIFERENCIA_IMPORTE: { c: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 ring-amber-500/30', d: 'Importes fuera de tolerancia' },
+      DIFERENCIA_TC: { c: 'bg-orange-500/15 text-orange-700 dark:text-orange-300 ring-orange-500/30', d: 'Diferencia por tipo de cambio' },
+      SOLO_ERP: { c: 'bg-violet-500/15 text-violet-700 dark:text-violet-300 ring-violet-500/30', d: 'Registro contable sin CFDI' },
+      SOLO_CFDI: { c: 'bg-sky-500/15 text-sky-700 dark:text-sky-300 ring-sky-500/30', d: 'CFDI no registrado en el ERP' },
+      SOLO_BANCO: { c: 'bg-teal-500/15 text-teal-700 dark:text-teal-300 ring-teal-500/30', d: 'Movimiento bancario sin registro' },
+      CFDI_CANCELADO: { c: 'bg-rose-500/15 text-rose-700 dark:text-rose-300 ring-rose-500/30', d: 'CFDI cancelado ante el SAT' },
+      PROVEEDOR_69B: { c: 'bg-red-500/15 text-red-700 dark:text-red-300 ring-red-500/30', d: 'Emisor en lista 69-B' },
+      PPD_SIN_REP: { c: 'bg-fuchsia-500/15 text-fuchsia-700 dark:text-fuchsia-300 ring-fuchsia-500/30', d: 'Pago diferido sin complemento' },
+    };
+    var chip = function (s) { return '<span class="inline-flex items-center rounded-md px-2 py-0.5 font-mono text-[11px] font-medium ring-1 ring-inset ' + STATUS[s].c + '">' + s + '</span>'; };
+
+    /* ---------------- Objetivos ---------------- */
+    $('#objGrid').innerHTML = OBJETIVOS.map(function (o) {
+      return '<div class="reveal card-glow rounded-2xl border border-slate-200 bg-white p-6 transition hover:-translate-y-1 dark:border-slate-800 dark:bg-slate-900/50">' +
+        '<div class="text-2xl">' + o.i + '</div>' +
+        '<h3 class="mt-4 font-semibold text-slate-900 dark:text-white">' + esc(o.t) + '</h3>' +
+        '<p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">' + esc(o.d) + '</p></div>';
+    }).join('');
+
+    /* ---------------- Fuentes (tabs) ---------------- */
+    var renderSrc = function (idx) {
+      $$('#srcTabs button').forEach(function (b, i) {
+        var on = i === idx;
+        b.setAttribute('aria-selected', on);
+        b.classList.toggle('border-brand-500', on);
+        b.classList.toggle('bg-white', on);
+        b.classList.toggle('dark:bg-slate-950', on);
+        b.classList.toggle('shadow-sm', on);
+        b.classList.toggle('border-transparent', !on);
+      });
+      var f = FUENTES[idx];
+      var p = $('#srcPanel');
+      p.style.opacity = 0;
+      setTimeout(function () {
+        p.innerHTML =
+          '<div class="flex items-center gap-4"><span class="h-12 w-12 shrink-0 rounded-xl bg-gradient-to-br ' + f.c + '"></span>' +
+          '<div><h3 class="text-2xl font-bold text-slate-900 dark:text-white">' + esc(f.n) + '</h3><p class="text-sm text-slate-500">' + esc(f.s) + '</p></div></div>' +
+          '<dl class="mt-8 divide-y divide-slate-200 dark:divide-slate-800">' + f.rows.map(function (r) {
+            return '<div class="grid gap-1 py-3 sm:grid-cols-[140px_1fr] sm:gap-4"><dt class="text-sm font-medium text-slate-500">' + esc(r[0]) + '</dt><dd class="text-sm text-slate-800 dark:text-slate-200">' + esc(r[1]) + '</dd></div>';
+          }).join('') + '</dl>' +
+          '<p class="mt-6 text-xs font-semibold uppercase tracking-widest text-slate-500">Campos clave</p>' +
+          '<div class="mt-3 flex flex-wrap gap-1.5">' + f.campos.map(function (c) {
+            return '<span class="rounded-md border border-slate-200 bg-slate-50 px-2 py-1 font-mono text-xs text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">' + esc(c) + '</span>';
+          }).join('') + '</div>';
+        p.style.transition = 'opacity .25s'; p.style.opacity = 1;
+      }, 120);
+    };
+    $('#srcTabs').innerHTML = FUENTES.map(function (f, i) {
+      return '<button role="tab" data-i="' + i + '" class="flex min-w-[200px] items-center gap-3 rounded-xl border-2 border-transparent p-3 text-left transition hover:bg-white dark:hover:bg-slate-950 lg:min-w-0">' +
+        '<span class="h-9 w-9 shrink-0 rounded-lg bg-gradient-to-br ' + f.c + '"></span>' +
+        '<span><span class="block font-semibold text-slate-900 dark:text-white">' + esc(f.n) + '</span><span class="block text-xs text-slate-500">' + esc(f.s) + '</span></span></button>';
+    }).join('');
+    $$('#srcTabs button').forEach(function (b) { b.addEventListener('click', function () { renderSrc(+b.dataset.i); }); });
+    renderSrc(0);
+
+    /* ---------------- Conciliaciones ---------------- */
+    var concFilter = 'all';
+    var renderConc = function () {
+      $('#concGrid').innerHTML = CONC.map(function (c) {
+        var on = concFilter === 'all' || c.f.indexOf(concFilter) > -1;
+        return '<div class="card-glow group rounded-2xl border border-slate-200 bg-white p-5 transition-all duration-300 dark:border-slate-800 dark:bg-slate-900/50 ' + (on ? '' : 'scale-[.98] opacity-30') + '">' +
+          '<div class="flex items-start gap-4"><span class="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-slate-900 font-mono text-sm font-bold text-brand-400 dark:bg-slate-800">' + c.id + '</span>' +
+          '<div class="min-w-0"><h3 class="font-semibold text-slate-900 dark:text-white">' + esc(c.t) + '</h3>' +
+          '<div class="mt-2 flex flex-wrap gap-1.5">' + c.f.map(function (k) { return '<span class="rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ' + FMETA[k].c + '">' + FMETA[k].n + '</span>'; }).join('<span class="text-slate-400">↔</span>') + '</div>' +
+          '<p class="mt-3 text-sm text-slate-600 dark:text-slate-400"><span class="font-medium text-slate-800 dark:text-slate-300">Llave:</span> ' + esc(c.k) + '</p></div></div></div>';
+      }).join('');
+      bindGlow();
+    };
+    var filters = [['all', 'Todas']].concat(Object.keys(FMETA).map(function (k) { return [k, FMETA[k].n]; }));
+    $('#concFilters').innerHTML = filters.map(function (f) {
+      return '<button data-f="' + f[0] + '" class="rounded-full border border-slate-300 px-3.5 py-1.5 text-sm font-medium transition dark:border-slate-700">' + f[1] + '</button>';
+    }).join('');
+    var paintFilters = function () {
+      $$('#concFilters button').forEach(function (b) {
+        var on = b.dataset.f === concFilter;
+        b.classList.toggle('bg-slate-900', on); b.classList.toggle('text-white', on);
+        b.classList.toggle('dark:bg-white', on); b.classList.toggle('dark:text-slate-900', on);
+        b.classList.toggle('border-slate-900', on);
+      });
+    };
+    $$('#concFilters button').forEach(function (b) { b.addEventListener('click', function () { concFilter = b.dataset.f; paintFilters(); renderConc(); }); });
+    paintFilters(); renderConc();
+
+    $('#levels').innerHTML = [
+      ['Exacto por UUID', 'Coincidencia directa del folio fiscal'],
+      ['RFC + importe + fecha', 'Cuando el ERP no tiene UUID'],
+      ['Aproximado (fuzzy)', 'Similitud en referencia o concepto'],
+      ['Revisión manual', 'Partidas que requieren criterio'],
+    ].map(function (l, i) {
+      var w = [100, 75, 50, 25][i];
+      return '<li class="rounded-xl border border-slate-200 p-3 dark:border-slate-800"><div class="flex items-center gap-3"><span class="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-brand-600 text-xs font-bold text-white">' + (i + 1) + '</span>' +
+        '<div class="min-w-0 flex-1"><div class="flex items-baseline justify-between gap-2"><span class="font-medium text-slate-900 dark:text-white">' + l[0] + '</span><span class="hidden text-xs text-slate-500 sm:inline">' + l[1] + '</span></div>' +
+        '<div class="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div class="h-full rounded-full bg-gradient-to-r from-brand-500 to-gold-400" style="width:' + w + '%"></div></div></div></div></li>';
+    }).join('');
+
+    $('#statusChips').innerHTML = Object.keys(STATUS).map(function (s) {
+      return '<div class="group relative">' + chip(s) +
+        '<span class="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-slate-900 px-2.5 py-1 text-xs text-white opacity-0 transition group-hover:opacity-100 dark:bg-white dark:text-slate-900">' + STATUS[s].d + '</span></div>';
+    }).join('');
+
+    /* ---------------- Simulador (datos ficticios) ---------------- */
+    var d = function (s) { return new Date(s + 'T12:00:00'); };
+    var days = function (a, b) { return Math.abs(Math.round((d(a) - d(b)) / 86400000)); };
+
+    var ERP = [
+      { doc: '5100000101', rfc: 'PRO010101AB1', uuid: 'U01', imp: 11600.00, fecha: '2026-10-03', pago: '2026-10-03' },
+      { doc: '5100000102', rfc: 'LOG020202CD2', uuid: 'U02', imp: 58000.00, fecha: '2026-10-05', pago: '2026-10-20' },
+      { doc: '5100000103', rfc: 'SER030303EF3', uuid: 'U03', imp: 23200.60, fecha: '2026-10-06', pago: '2026-10-08' },
+      { doc: '5100000104', rfc: 'TEC040404GH4', uuid: 'U04', imp: 9280.00, fecha: '2026-10-07', pago: null },
+      { doc: '5100000105', rfc: 'FAN050505IJ5', uuid: 'U05', imp: 17400.00, fecha: '2026-10-09', pago: '2026-10-09' },
+      { doc: '5100000106', rfc: 'MAQ060606KL6', uuid: 'U06', imp: 92800.00, fecha: '2026-10-10', pago: '2026-10-25' },
+      { doc: '5100000107', rfc: 'IMP070707MN7', uuid: 'U07', imp: 36400.00, usd: 2000, tc: 18.20, fecha: '2026-10-11', pago: '2026-10-11' },
+      { doc: '5100000108', rfc: 'PAP080808OP8', uuid: null, imp: 4640.00, fecha: '2026-10-12', pago: '2026-10-12' },
+      { doc: '5100000109', rfc: 'TRA090909QR9', uuid: null, imp: 3480.00, fecha: '2026-10-15', pago: null },
+      { doc: '5100000110', rfc: 'CON101010ST0', uuid: 'U10', imp: 34800.00, fecha: '2026-10-20', pago: '2026-10-28' },
+    ];
+    var CFDI = [
+      { uuid: 'U01', rfc: 'PRO010101AB1', imp: 11600.00, fecha: '2026-10-03', mp: 'PUE', st: 'Vigente' },
+      { uuid: 'U02', rfc: 'LOG020202CD2', imp: 58000.00, fecha: '2026-10-05', mp: 'PPD', st: 'Vigente', rep: true },
+      { uuid: 'U03', rfc: 'SER030303EF3', imp: 23200.00, fecha: '2026-10-06', mp: 'PUE', st: 'Vigente' },
+      { uuid: 'U04', rfc: 'TEC040404GH4', imp: 9280.00, fecha: '2026-10-07', mp: 'PUE', st: 'Cancelado' },
+      { uuid: 'U05', rfc: 'FAN050505IJ5', imp: 17400.00, fecha: '2026-10-09', mp: 'PUE', st: 'Vigente', b69: true },
+      { uuid: 'U06', rfc: 'MAQ060606KL6', imp: 92800.00, fecha: '2026-10-10', mp: 'PPD', st: 'Vigente', rep: false },
+      { uuid: 'U07', rfc: 'IMP070707MN7', imp: 36700.00, usd: 2000, tc: 18.35, fecha: '2026-10-11', mp: 'PUE', st: 'Vigente' },
+      { uuid: 'U08', rfc: 'PAP080808OP8', imp: 4640.00, fecha: '2026-10-14', mp: 'PUE', st: 'Vigente' },
+      { uuid: 'U10', rfc: 'CON101010ST0', imp: 34800.00, fecha: '2026-10-20', mp: 'PUE', st: 'Vigente' },
+      { uuid: 'U11', rfc: 'OFI111111UV1', imp: 2320.00, fecha: '2026-10-22', mp: 'PUE', st: 'Vigente' },
+    ];
+    var BANCO = [
+      { id: 'B1', imp: 11600.00, fecha: '2026-10-03', ref: 'SPEI PRO010101AB1' },
+      { id: 'B2', imp: 58000.00, fecha: '2026-10-21', ref: 'SPEI LOG020202CD2' },
+      { id: 'B3', imp: 23200.60, fecha: '2026-10-08', ref: 'SPEI SER030303EF3' },
+      { id: 'B5', imp: 17400.00, fecha: '2026-10-09', ref: 'SPEI FAN050505IJ5' },
+      { id: 'B6', imp: 92800.00, fecha: '2026-10-25', ref: 'SPEI MAQ060606KL6' },
+      { id: 'B7', imp: 36400.00, fecha: '2026-10-11', ref: 'SPEI IMP070707MN7' },
+      { id: 'B8', imp: 4640.00, fecha: '2026-10-13', ref: 'SPEI PAP080808OP8' },
+      { id: 'B10', imp: 34800.00, fecha: '2026-11-01', ref: 'SPEI CON101010ST0' },
+      { id: 'B99', imp: 7250.00, fecha: '2026-10-30', ref: 'TRASPASO SIN REFERENCIA' },
+    ];
+
+    var lastResult = [];
+    var runSim = function () {
+      var tolA = +$('#tolAmt').value, tolD = +$('#tolDays').value;
+      var useL2 = $('#useL2').checked, use69 = $('#use69').checked;
+      var usedC = {}, usedB = {}, out = [];
+
+      ERP.forEach(function (e) {
+        var c = null, nivel = null;
+        if (e.uuid) { c = CFDI.filter(function (x) { return x.uuid === e.uuid; })[0] || null; if (c) nivel = 1; }
+        if (!c && useL2) {
+          c = CFDI.filter(function (x) { return !usedC[x.uuid] && x.rfc === e.rfc && Math.abs(x.imp - e.imp) <= tolA && days(x.fecha, e.fecha) <= tolD; })[0] || null;
+          if (c) nivel = 2;
+        }
+        if (c) usedC[c.uuid] = true;
+
+        var b = null;
+        if (e.pago) {
+          b = BANCO.filter(function (x) { return !usedB[x.id] && Math.abs(x.imp - e.imp) <= tolA && days(x.fecha, e.pago) <= tolD; })[0] || null;
+          if (b) usedB[b.id] = true;
+        }
+
+        var st, diff = 0;
+        if (!c) { st = 'SOLO_ERP'; diff = e.imp; }
+        else if (c.st === 'Cancelado') { st = 'CFDI_CANCELADO'; diff = e.imp; }
+        else if (use69 && c.b69) { st = 'PROVEEDOR_69B'; diff = e.imp; }
+        else if (Math.abs(c.imp - e.imp) > tolA) {
+          diff = Math.abs(c.imp - e.imp);
+          st = (e.usd && c.usd && e.usd === c.usd && e.tc !== c.tc) ? 'DIFERENCIA_TC' : 'DIFERENCIA_IMPORTE';
+        }
+        else if (c.mp === 'PPD' && !c.rep) { st = 'PPD_SIN_REP'; diff = e.imp; }
+        else st = 'CONCILIADO';
+
+        out.push({ doc: e.doc, rfc: e.rfc, erp: e.imp, cfdi: c ? c.imp : null, nivel: nivel, banco: e.pago ? (b ? 'ok' : 'no') : 'na', st: st, diff: diff,
+          nota: st === 'DIFERENCIA_TC' ? 'TC ERP ' + e.tc + ' vs CFDI ' + c.tc : '' });
+      });
+      CFDI.forEach(function (c) { if (!usedC[c.uuid]) out.push({ doc: '—', rfc: c.rfc, erp: null, cfdi: c.imp, nivel: null, banco: 'na', st: 'SOLO_CFDI', diff: c.imp }); });
+      BANCO.forEach(function (b) { if (!usedB[b.id]) out.push({ doc: b.id, rfc: b.ref, erp: null, cfdi: null, banco: 'solo', nivel: null, st: 'SOLO_BANCO', diff: b.imp, bimp: b.imp }); });
+
+      lastResult = out;
+      renderSim(out);
+    };
+
+    var renderSim = function (rows) {
+      var bancoCell = function (v) {
+        if (v === 'ok') return '<span class="text-emerald-400" title="Pago localizado">●</span>';
+        if (v === 'no') return '<span class="text-rose-400" title="Pago fuera de tolerancia">●</span>';
+        if (v === 'solo') return '<span class="text-teal-300" title="Solo en banco">◆</span>';
+        return '<span class="text-slate-600">—</span>';
+      };
+      $('#simBody').innerHTML = rows.map(function (r, i) {
+        return '<tr class="opacity-0 transition-opacity duration-500 hover:bg-white/5" style="transition-delay:' + (i * 35) + 'ms">' +
+          '<td class="px-5 py-3 font-mono text-xs text-slate-300">' + esc(r.doc) + '</td>' +
+          '<td class="px-5 py-3 font-mono text-xs text-slate-400">' + esc(r.rfc) + '</td>' +
+          '<td class="px-5 py-3 text-right font-mono text-xs">' + (r.erp != null ? mxn(r.erp) : (r.bimp ? '<span class="text-teal-300">' + mxn(r.bimp) + '</span>' : '<span class="text-slate-600">—</span>')) + '</td>' +
+          '<td class="px-5 py-3 text-right font-mono text-xs">' + (r.cfdi != null ? mxn(r.cfdi) : '<span class="text-slate-600">—</span>') + '</td>' +
+          '<td class="px-5 py-3 text-center text-xs">' + (r.nivel ? '<span class="rounded bg-white/10 px-1.5 py-0.5 font-mono">N' + r.nivel + '</span>' : '<span class="text-slate-600">—</span>') + '</td>' +
+          '<td class="px-5 py-3 text-center">' + bancoCell(r.banco) + '</td>' +
+          '<td class="px-5 py-3">' + chip(r.st) + (r.nota ? '<div class="mt-1 text-[11px] text-slate-500">' + esc(r.nota) + '</div>' : '') + '</td></tr>';
+      }).join('');
+      requestAnimationFrame(function () { $$('#simBody tr').forEach(function (tr) { tr.classList.remove('opacity-0'); }); });
+
+      var full = rows.filter(function (r) { return r.st === 'CONCILIADO' && r.banco !== 'no'; }).length;
+      var pct = Math.round(full / rows.length * 100);
+      $('#donut').setAttribute('stroke-dasharray', pct + ' 100');
+      animateNum($('#pct'), pct, function (v) { return Math.round(v) + '%'; });
+      var diffTotal = rows.reduce(function (a, r) { return a + (r.st !== 'CONCILIADO' ? r.diff : 0); }, 0);
+      animateNum($('#diffAmt'), diffTotal, mxn);
+
+      var counts = {};
+      rows.forEach(function (r) { counts[r.st] = (counts[r.st] || 0) + 1; });
+      var bancoNo = rows.filter(function (r) { return r.banco === 'no'; }).length;
+      $('#kpis').innerHTML = Object.keys(STATUS).filter(function (s) { return counts[s]; }).map(function (s) {
+        return '<span class="inline-flex items-center gap-1.5">' + chip(s) + '<span class="font-mono text-slate-400">' + counts[s] + '</span></span>';
+      }).join('') + (bancoNo ? '<span class="inline-flex items-center gap-1.5 text-slate-400"><span class="text-rose-400">●</span> pago sin banco <span class="font-mono">' + bancoNo + '</span></span>' : '');
+    };
+
+    var animateNum = function (el, to, fmt) {
+      var from = +(el.dataset.v || 0), t0 = performance.now(), dur = 700;
+      el.dataset.v = to;
+      var step = function (t) {
+        var p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+        el.textContent = fmt(from + (to - from) * e);
+        if (p < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    };
+
+    var syncLabels = function () {
+      $('#tolAmtVal').textContent = '±' + (+$('#tolAmt').value).toFixed(2);
+      var n = +$('#tolDays').value;
+      $('#tolDaysVal').textContent = '±' + n + (n === 1 ? ' día' : ' días');
+    };
+    ['#tolAmt', '#tolDays'].forEach(function (s) { $(s).addEventListener('input', function () { syncLabels(); runSim(); }); });
+    ['#useL2', '#use69'].forEach(function (s) { $(s).addEventListener('change', runSim); });
+    $('#runBtn').addEventListener('click', function () { runSim(); toast('Conciliación ejecutada · ' + lastResult.length + ' partidas'); });
+    syncLabels(); runSim();
+
+    $('#csvBtn').addEventListener('click', function () {
+      var head = ['documento', 'rfc_o_referencia', 'importe_erp', 'importe_cfdi', 'nivel', 'banco', 'estatus'];
+      var lines = [head.join(',')].concat(lastResult.map(function (r) {
+        return [r.doc, r.rfc, r.erp != null ? r.erp.toFixed(2) : (r.bimp ? r.bimp.toFixed(2) : ''), r.cfdi != null ? r.cfdi.toFixed(2) : '', r.nivel || '', r.banco, r.st]
+          .map(function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; }).join(',');
+      }));
+      var blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = 'conciliacion_demo.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+      toast('CSV exportado');
+    });
+
+    /* ---------------- Flujo ---------------- */
+    $('#flowSources').innerHTML = FUENTES.map(function (f) {
+      return '<div class="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900"><span class="h-8 w-8 shrink-0 rounded-lg bg-gradient-to-br ' + f.c + '"></span><span class="text-sm font-semibold text-slate-900 dark:text-white">' + esc(f.n) + '</span></div>';
+    }).join('');
+    $('#flowSteps').innerHTML = ['Ingesta y validación', 'Normalización (RFC, fechas, moneda, TC)', 'Modelo de datos común', 'Motor de conciliación C1–C8', 'Cálculo de IVA y retenciones'].map(function (s, i) {
+      return '<li class="flow-step rounded-xl bg-white p-3 text-center shadow-sm transition-all duration-500 dark:bg-slate-900" data-i="' + i + '"><div class="mx-auto grid h-7 w-7 place-items-center rounded-full bg-slate-200 text-xs font-bold text-slate-600 transition-colors duration-500 dark:bg-slate-800 dark:text-slate-300">' + (i + 1) + '</div><div class="mt-2 text-xs font-medium leading-snug text-slate-700 dark:text-slate-300">' + s + '</div></li>';
+    }).join('');
+    var flowIdx = 0;
+    setInterval(function () {
+      $$('.flow-step').forEach(function (el, i) {
+        var on = i === flowIdx;
+        el.classList.toggle('ring-2', on); el.classList.toggle('ring-brand-500', on); el.classList.toggle('-translate-y-1', on);
+        var dot = el.firstChild;
+        dot.classList.toggle('bg-brand-500', on); dot.classList.toggle('!text-white', on);
+      });
+      flowIdx = (flowIdx + 1) % 5;
+    }, 1400);
+
+    /* ---------------- Entregables ---------------- */
+    $('#delivGrid').innerHTML = [
+      ['IVA mensual', 'Papel de trabajo de IVA trasladado, acreditable, retenido e importación.'],
+      ['Diferencias', 'Reporte por conciliación con detalle de cada partida.'],
+      ['Base DIOT', 'Por proveedor y tipo de operación.'],
+      ['Alertas', 'CFDI cancelados, proveedores 69-B y PPD sin complemento de pago.'],
+      ['Tablero', '% conciliado, importe en diferencias y antigüedad de partidas abiertas.'],
+    ].map(function (x, i) {
+      return '<div class="reveal card-glow rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-950">' +
+        '<div class="font-mono text-xs text-brand-600 dark:text-brand-400">0' + (i + 1) + '</div>' +
+        '<h3 class="mt-3 font-semibold text-slate-900 dark:text-white">' + x[0] + '</h3>' +
+        '<p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">' + x[1] + '</p></div>';
+    }).join('');
+
+    /* ---------------- Efectos ---------------- */
+    function bindGlow() {
+      $$('.card-glow').forEach(function (el) {
+        if (el._glow) return; el._glow = true;
+        el.addEventListener('pointermove', function (e) {
+          var r = el.getBoundingClientRect();
+          el.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+          el.style.setProperty('--my', (e.clientY - r.top) + 'px');
+        });
+      });
+    }
+    bindGlow();
+
+    var revealObs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); revealObs.unobserve(e.target); } });
+    }, { threshold: 0.12 });
+    $$('.reveal').forEach(function (el) { revealObs.observe(el); });
+
+    var countObs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        animateNum(e.target, +e.target.dataset.count, function (v) { return Math.round(v); });
+        countObs.unobserve(e.target);
+      });
+    });
+    $$('[data-count]').forEach(function (el) { countObs.observe(el); });
+
+    var toastTimer;
+    function toast(msg) {
+      var t = $('#toast');
+      t.textContent = msg;
+      t.classList.remove('opacity-0', 'translate-y-4');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { t.classList.add('opacity-0', 'translate-y-4'); }, 2200);
+    }
+  })();
+  </script>
+</body>
+</html>
