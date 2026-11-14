@@ -495,6 +495,13 @@
               </div>
             </form>
             <div id="c1Resumen" class="flex flex-wrap gap-2"></div>
+            <div id="c1Masiva" class="flex flex-wrap items-center gap-3 rounded-xl border border-brand-500/40 bg-brand-500/5 px-4 py-3 text-sm" hidden>
+              <span id="c1MasivaN" class="font-medium"></span>
+              <label for="c1MasivaNota" class="sr-only">Nota de revisión</label>
+              <input id="c1MasivaNota" type="text" maxlength="500" placeholder="Nota para todas (opcional: si la dejas vacía, cada partida conserva la suya)" class="min-w-[18rem] flex-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm dark:border-slate-700 dark:bg-slate-900" />
+              <button id="c1MasivaOk" type="button" class="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-500 disabled:opacity-60">Marcar como revisadas</button>
+              <button id="c1MasivaNo" type="button" class="text-xs font-medium text-slate-600 hover:underline dark:text-slate-400">Quitar selección</button>
+            </div>
             <div class="min-w-0 overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
               <table class="w-full min-w-[920px] text-left text-sm">
                 <thead id="c1Head" class="bg-slate-100 text-xs uppercase tracking-wider text-slate-600 dark:bg-slate-900 dark:text-slate-300"></thead>
@@ -1889,12 +1896,13 @@
       if (!st.ejecucion && ej.length) st.ejecucion = ej[0].ejecucion_id;
       if (st.ejecucion) { $('#c1Ver').value = st.ejecucion; verResultados(); }
       else {
-        pintarEncabezado(regla); $('#c1Resumen').innerHTML = '';
+        pintarEncabezado(regla); $('#c1Resumen').innerHTML = ''; mostrar($('#c1Masiva'), false);
         $('#c1Body').innerHTML = '<tr><td colspan="10" class="px-4 py-6 text-sm text-slate-500">Elige el periodo y ejecuta ' + regla + ' para ver resultados.</td></tr>';
       }
     }
     function pintarEncabezado(regla) {
-      $('#c1Head').innerHTML = '<tr>' + COLUMNAS[regla].map(function (c) { return '<th class="px-4 py-3 font-medium ' + c[1] + '">' + c[0] + '</th>'; }).join('') +
+      var editor = st.usuario && st.usuario.rol !== 'LECTOR';
+      $('#c1Head').innerHTML = '<tr>' + (editor ? '<th class="w-8 px-3 py-3"><input type="checkbox" id="c1SelTodos" aria-label="Seleccionar todas las partidas visibles" class="h-4 w-4 rounded border-slate-300 accent-brand-600" /></th>' : '') + COLUMNAS[regla].map(function (c) { return '<th class="px-4 py-3 font-medium ' + c[1] + '">' + c[0] + '</th>'; }).join('') +
         '<th class="px-4 py-3 text-center font-medium">Nivel</th><th class="px-4 py-3 font-medium">Estatus</th><th class="px-4 py-3 font-medium">Revisión</th></tr>';
     }
     $('#c1Regla').addEventListener('change', function () {
@@ -1961,11 +1969,25 @@
         var rev = f.revisado_por ? '<div class="text-xs text-emerald-700 dark:text-emerald-400">✓ ' + esc(f.revisado_por) +
           (f.revision_heredada_de ? ' <span class="text-slate-500" title="Revisión conservada del resultado #' + esc(f.revision_heredada_de) + ' de la ejecución anterior: el hallazgo no cambió">· conservada</span>' : '') + '</div>' : '';
         return '<tr data-r="' + f.resultado_id + '">' +
+          (puedeRevisar ? '<td class="px-3 py-3"><input type="checkbox" class="c1-sel h-4 w-4 rounded border-slate-300 accent-brand-600" value="' + f.resultado_id + '" aria-label="Seleccionar partida ' + f.resultado_id + '" /></td>' : '') +
           COLUMNAS[regla].map(function (c) { return '<td class="px-4 py-3 ' + c[1] + '">' + c[2](f) + '</td>'; }).join('') +
           '<td class="px-4 py-3 text-center text-xs">' + (f.nivel_cruce ? 'N' + f.nivel_cruce : '—') + '</td>' +
           '<td class="px-4 py-3">' + chip(f.estatus) + (f.comentario ? '<div class="mt-1 max-w-[220px] text-xs text-slate-500">' + esc(f.comentario) + '</div>' : '') + '</td>' +
           '<td class="px-4 py-3">' + rev + (puedeRevisar ? '<button type="button" class="c1-rev text-xs font-medium text-brand-700 hover:underline dark:text-brand-300">' + (f.revisado_por ? 'Editar nota' : 'Marcar revisado') + '</button>' : '') + '</td></tr>';
-      }).join('') || '<tr><td colspan="10" class="px-4 py-6 text-sm text-slate-500">Sin resultados para este filtro.</td></tr>';
+      }).join('') || '<tr><td colspan="11" class="px-4 py-6 text-sm text-slate-500">Sin resultados para este filtro.</td></tr>';
+      // Revisión masiva: la selección se reinicia en cada carga de la tabla
+      $('#c1MasivaNota').value = '';
+      var actualizarMasiva = function () {
+        var sel = $$('.c1-sel').filter(function (x) { return x.checked; }), total = $$('.c1-sel').length;
+        mostrar($('#c1Masiva'), sel.length > 0);
+        $('#c1MasivaN').textContent = sel.length + ' partida' + (sel.length === 1 ? '' : 's') + ' seleccionada' + (sel.length === 1 ? '' : 's');
+        $('#c1MasivaOk').textContent = 'Marcar ' + sel.length + ' como revisada' + (sel.length === 1 ? '' : 's');
+        var todos = $('#c1SelTodos');
+        if (todos) { todos.checked = total > 0 && sel.length === total; todos.indeterminate = sel.length > 0 && sel.length < total; }
+      };
+      $$('.c1-sel').forEach(function (x) { x.addEventListener('change', actualizarMasiva); });
+      if ($('#c1SelTodos')) $('#c1SelTodos').onchange = function () { var v = this.checked; $$('.c1-sel').forEach(function (x) { x.checked = v; }); actualizarMasiva(); };
+      actualizarMasiva();
       $$('.c1-rev').forEach(function (b) { b.addEventListener('click', function () {
         var tr = b.closest('tr'), id = +tr.dataset.r;
         var actual = r.filas.filter(function (f) { return String(f.resultado_id) === String(id); })[0];
@@ -1980,6 +2002,24 @@
         });
       }); });
     }
+
+    $('#c1MasivaNo').addEventListener('click', function () {
+      $$('.c1-sel').forEach(function (x) { x.checked = false; });
+      if ($('#c1SelTodos')) { $('#c1SelTodos').checked = false; $('#c1SelTodos').indeterminate = false; }
+      mostrar($('#c1Masiva'), false);
+    });
+    $('#c1MasivaOk').addEventListener('click', async function () {
+      var ids = $$('.c1-sel').filter(function (x) { return x.checked; }).map(function (x) { return +x.value; });
+      if (!ids.length) return;
+      var b = this; b.disabled = true;
+      try {
+        var r = await api('revisar_varios', { resultado_ids: ids, comentario: $('#c1MasivaNota').value.trim() || null });
+        toast(r.revisadas + ' partida' + (r.revisadas === 1 ? ' marcada' : 's marcadas') + ' como revisada' + (r.revisadas === 1 ? '' : 's'));
+        await verResultados();
+        if (alertasDatos) cargarAlertas();
+      } catch (e) { manejarError(e); }
+      finally { b.disabled = false; }
+    });
 
     /* ---------------- Papel de trabajo de IVA (Excel) ---------------- */
     var xlsxPromesa = null;
