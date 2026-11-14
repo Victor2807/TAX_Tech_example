@@ -1903,10 +1903,21 @@
           '<span class="text-slate-500">Pendiente por falta de pago <strong class="tabular-nums">$' + fmtMonto(ejSel.parametros.iva_pendiente || 0) + '</strong></span>' +
           '<button type="button" id="c5Papel" class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60">Papel de trabajo (Excel)</button></div>';
       }
+      if (regla === 'C9') {
+        var ret = { 'ISR retenido': null, 'IVA retenido': null };
+        r.filas.forEach(function (f) { if (f.concepto in ret) ret[f.concepto] = (Number(f.importe_b) || 0) - (Number(f.importe_a) || 0); });
+        var lim = ejSel && ejSel.parametros ? ejSel.parametros.fecha_limite_entero : null;
+        var txt = function (k) { return ret[k] == null ? '—' : '$' + fmtMonto(ret[k]); };
+        totalIva = '<div class="mr-2 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-2 text-sm">' +
+          '<span>Por enterar · ISR <strong class="tabular-nums text-emerald-700 dark:text-emerald-400">' + txt('ISR retenido') + '</strong> · IVA <strong class="tabular-nums text-emerald-700 dark:text-emerald-400">' + txt('IVA retenido') + '</strong></span>' +
+          (lim ? '<span class="text-slate-500">Fecha límite <strong>' + esc(String(lim).split('-').reverse().join('/')) + '</strong></span>' : '') +
+          '<button type="button" id="c9Papel" class="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-60">Papel de retenciones (Excel)</button></div>';
+      }
       $('#c1Resumen').innerHTML = totalIva + '<button type="button" data-s="" class="c1-est rounded-full border px-3 py-1 text-xs ' + (!st.estatusFiltro ? 'border-brand-500 text-brand-700 dark:text-brand-300' : 'border-slate-300 dark:border-slate-700') + '">Todos · ' + r.filas.length + '</button>' +
         Object.keys(cuenta).map(function (s) { return '<button type="button" data-s="' + s + '" class="c1-est inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ' + (st.estatusFiltro === s ? 'border-brand-500' : 'border-transparent') + '">' + chip(s) + '<span class="font-mono text-xs text-slate-500">' + cuenta[s] + '</span></button>'; }).join('');
       $$('.c1-est').forEach(function (b) { b.addEventListener('click', function () { st.estatusFiltro = b.dataset.s || null; verResultados(); }); });
       if ($('#c5Papel')) $('#c5Papel').addEventListener('click', generarPapel);
+      if ($('#c9Papel')) $('#c9Papel').addEventListener('click', generarPapelRetenciones);
       var filas = r.filas.filter(function (f) { return !st.estatusFiltro || f.estatus === st.estatusFiltro; });
       var puedeRevisar = st.usuario && st.usuario.rol !== 'LECTOR';
       $('#c1Body').innerHTML = filas.map(function (f) {
@@ -2094,6 +2105,88 @@
         manejarError(e);
       } finally {
         if (btn) { btn.disabled = false; btn.textContent = 'Papel de trabajo (Excel)'; }
+      }
+    }
+
+    /* ---------------- Papel de trabajo de retenciones ---------------- */
+    async function generarPapelRetenciones() {
+      var btn = $('#c9Papel');
+      if (btn) { btn.disabled = true; btn.textContent = 'Generando…'; }
+      try {
+        var d = await api('papel_retenciones', { ejecucion_id: st.ejecucion });
+        await cargarXLSX();
+        var X = window.XLSX, wb = X.utils.book_new(), h = d.encabezado;
+        var n = function (v) { return v == null ? null : Number(v); };
+        var fecha = function (v) { return v ? String(v).slice(0, 10) : null; };
+        var imp = {}; (d.determinacion || []).forEach(function (r) { imp[r.impuesto] = r; });
+        var isr = imp['ISR retenido'] || {}, iva = imp['IVA retenido'] || {};
+        var fila = function (concepto, campo) { return [concepto, n(isr[campo]) || 0, n(iva[campo]) || 0, null]; };
+
+        // 1. Determinación
+        var ws = X.utils.aoa_to_sheet([
+          ['Papel de trabajo de retenciones de ISR e IVA · flujo de efectivo'],
+          ['Contribuyente', h.razon_social],
+          ['RFC', h.rfc],
+          ['Periodo', h.periodo_desde + ' a ' + h.periodo_hasta],
+          ['Origen', 'Conciliación C9 #' + h.ejecucion_id + ' del ' + fechaHora(h.ejecutado_en) + (h.ejecutado_por ? ' · ' + h.ejecutado_por : '')],
+          ['Fecha límite de entero', h.fecha_limite_entero],
+          [],
+          ['Concepto', 'ISR retenido', 'IVA retenido', 'Total'],
+          fila('Retenido según CFDI (facturas pagadas en el periodo)', 'causado'),
+          fila('Registrado en las cuentas de retención del ERP', 'registrado'),
+          fila('Enterado según el ERP', 'enterado'),
+          ['Por enterar (retenido − enterado)', null, null, null],
+          fila('Retenciones aún no causadas (facturas sin pagar)', 'no_causado'),
+          [],
+          ['Fecha del entero', fecha(isr.fecha_entero), fecha(iva.fecha_entero)],
+          ['Cargo en el banco', fecha(isr.fecha_banco), fecha(iva.fecha_banco)],
+          ['Estatus C9', isr.estatus || 'Sin retenciones', iva.estatus || 'Sin retenciones'],
+          ['Comentario', isr.comentario || null, iva.comentario || null],
+          [],
+          ['Las retenciones se causan al pagar la factura y se enteran a más tardar el día 17 del mes siguiente. Herramienta de apoyo: revisa las cifras antes de presentar la declaración.'],
+        ]);
+        ws.B12 = { t: 'n', f: 'B9-B11', v: Math.round(((n(isr.causado) || 0) - (n(isr.enterado) || 0)) * 100) / 100 };
+        ws.C12 = { t: 'n', f: 'C9-C11', v: Math.round(((n(iva.causado) || 0) - (n(iva.enterado) || 0)) * 100) / 100 };
+        [9, 10, 11, 12, 13].forEach(function (r) {
+          var b = ws['B' + r] ? Number(ws['B' + r].v) || 0 : 0, c = ws['C' + r] ? Number(ws['C' + r].v) || 0 : 0;
+          ws['D' + r] = { t: 'n', f: 'B' + r + '+C' + r, v: Math.round((b + c) * 100) / 100 };
+          ['B', 'C', 'D'].forEach(function (k) { if (ws[k + r]) ws[k + r].z = '#,##0.00;[Red]-#,##0.00'; });
+        });
+        ws['!ref'] = X.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: 19, c: 3 } });
+        ws['!cols'] = [{ wch: 52 }, { wch: 22 }, { wch: 22 }, { wch: 16 }];
+        X.utils.book_append_sheet(wb, ws, 'Determinación');
+
+        // 2. Por factura
+        X.utils.book_append_sheet(wb, hojaTabla(X, 'Retenciones por factura · ' + h.periodo_desde + ' a ' + h.periodo_hasta,
+          ['Causada', 'Fecha de pago', 'Fecha CFDI', 'Serie-folio', 'UUID', 'RFC', 'Proveedor', 'Tipo de retención', 'Doc. ERP', 'Base', 'Tasa ISR', 'Tasa IVA', 'ISR CFDI', 'IVA CFDI', 'ISR ERP', 'IVA ERP', 'Estatus C9', 'Comentario'],
+          (d.detalle || []).map(function (r) {
+            return [r.causada ? 'Sí' : 'No', fecha(r.fecha_pago), fecha(r.fecha_cfdi), r.serie_folio, r.uuid, r.rfc, r.nombre, r.tipo, r.documento_erp,
+                    n(r.base), n(r.tasa_isr), n(r.tasa_iva), n(r.isr_cfdi), n(r.iva_cfdi), n(r.isr_erp), n(r.iva_erp), r.estatus, r.comentario];
+          }),
+          { dinero: ['J', 'M', 'N', 'O', 'P'], totales: ['J', 'M', 'N', 'O', 'P'], anchos: [8, 13, 12, 11, 38, 15, 28, 44, 12, 13, 9, 9, 12, 12, 12, 12, 20, 50],
+            nota: 'Solo las facturas causadas (pagadas en el periodo y con CFDI vigente) entran en lo retenido del mes.' }), 'Por factura');
+
+        // 3. Constancias por proveedor
+        X.utils.book_append_sheet(wb, hojaTabla(X, 'Constancias de retenciones por proveedor (retenciones causadas en el periodo)',
+          ['RFC', 'Proveedor', 'Tipo de persona', 'Facturas', 'Base', 'ISR retenido', 'IVA retenido'],
+          (d.por_proveedor || []).map(function (r) { return [r.rfc, r.nombre, r.persona_fisica ? 'Física' : 'Moral', r.facturas, n(r.base), n(r.isr), n(r.iva)]; }),
+          { dinero: ['E', 'F', 'G'], totales: ['D', 'E', 'F', 'G'], anchos: [16, 30, 15, 10, 15, 14, 14],
+            nota: 'Emite a cada proveedor el CFDI de retenciones e información de pagos por lo retenido en el periodo.' }), 'Constancias');
+
+        // 4. Enteros
+        X.utils.book_append_sheet(wb, hojaTabla(X, 'Enteros registrados en el ERP y su cargo en el banco',
+          ['Doc. ERP', 'Fecha', 'Referencia', 'ISR', 'IVA', 'Total pagado', 'Banco', 'Fecha en banco', 'Después de la fecha límite'],
+          (d.enteros || []).map(function (r) { return [r.documento_erp, fecha(r.fecha), r.referencia, n(r.isr), n(r.iva), n(r.total), r.banco || 'No localizado', fecha(r.fecha_banco), r.extemporaneo ? 'Sí' : 'No']; }),
+          { dinero: ['D', 'E', 'F'], totales: ['D', 'E', 'F'], anchos: [12, 12, 18, 12, 12, 14, 14, 15, 24],
+            nota: 'Un entero después de la fecha límite causa actualización y recargos.' }), 'Enteros');
+
+        var nombre = 'papel_trabajo_retenciones_' + h.rfc + '_' + String(h.periodo_desde).slice(0, 7) + '.xlsx';
+        X.writeFile(wb, nombre);
+        toast('Papel de retenciones descargado: ' + nombre);
+      } catch (e) {
+        manejarError(e);
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = 'Papel de retenciones (Excel)'; }
       }
     }
 
