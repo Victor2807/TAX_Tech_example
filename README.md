@@ -90,6 +90,17 @@ El objetivo es encontrar diferencias antes de presentar declaraciones, sustentar
 
 ---
 
+## Modelo de datos
+
+Las cuatro fuentes y los resultados de conciliación se guardan en un modelo entidad-relación de 24 tablas (PostgreSQL), organizado en seis dominios: catálogos comunes, CFDI, ERP, bancos, Data Stage y conciliación.
+
+- Diagrama y explicación: [`docs/modelo-er.md`](docs/modelo-er.md)
+- DDL: [`db/schema.sql`](db/schema.sql)
+
+![Modelo entidad-relación](docs/modelo-er.png)
+
+---
+
 ## Flujo del proceso
 
 ```
@@ -136,6 +147,10 @@ TAX_Tech_example/
 │   ├── reconciliation/ # Reglas C1–C8
 │   └── reporting/      # Papeles de trabajo y reportes
 ├── config/             # Tolerancias, mapeos de cuentas e indicadores de IVA
+├── db/
+│   └── schema.sql      # Modelo entidad-relación (PostgreSQL)
+├── docs/
+│   └── modelo-er.md    # Diagrama ER y explicación
 ├── tests/
 └── README.md
 ```
