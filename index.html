@@ -53,6 +53,19 @@
   <style>
     :root { --bg: #ffffff; --fg: #1e293b; }
     @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #020617; --fg: #e2e8f0; color-scheme: dark; } }
+    /* Tablero de IVA: colores por función, validados contra la superficie de las tarjetas (blanco / #020617) */
+    .viz-root { --v-surface: #ffffff; --v-text: #0f172a; --v-text2: #475569; --v-muted: #64748b; --v-grid: #e2e8f0; --v-axis: #cbd5e1;
+                --v-s1: #2a78d6; --v-s2: #eb6834; --v-favor: #2a78d6; --v-cargo: #e34948; --v-track: #eef2f7; }
+    .dark .viz-root { --v-surface: #020617; --v-text: #f1f5f9; --v-text2: #cbd5e1; --v-muted: #94a3b8; --v-grid: #1e293b; --v-axis: #334155;
+                      --v-s1: #3987e5; --v-s2: #d95926; --v-favor: #3987e5; --v-cargo: #e66767; --v-track: #0f172a; }
+    .viz-root .v-num { font-variant-numeric: tabular-nums; }
+    .viz-root svg text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+    .viz-root .v-chart:focus-visible { outline: 2px solid var(--v-s1); outline-offset: 2px; border-radius: 8px; }
+    .viz-root .v-tip { position: absolute; pointer-events: none; z-index: 20; min-width: 10rem; max-width: 16rem; padding: .5rem .625rem; border-radius: .5rem;
+                       background: var(--v-surface); color: var(--v-text); box-shadow: 0 4px 16px rgba(2,6,23,.16); border: 1px solid var(--v-grid); font-size: .75rem; }
+    .viz-root .v-key { display: inline-block; width: 12px; height: 2px; border-radius: 1px; vertical-align: middle; margin-right: 6px; }
+    .viz-root .v-bar { border-radius: 0 4px 4px 0; }
+    .viz-root .v-cargando { opacity: .55; transition: opacity .15s; }
     :root[data-theme="dark"] { --bg: #020617; --fg: #e2e8f0; color-scheme: dark; }
     :root.dark { --bg: #020617; --fg: #e2e8f0; color-scheme: dark; }
     :root:not(.dark) { --bg: #ffffff; --fg: #1e293b; color-scheme: light; }
@@ -390,9 +403,10 @@
         <div id="dbApp" class="mt-10" hidden>
           <div role="tablist" aria-label="Panel de datos" class="flex gap-1 overflow-x-auto rounded-xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900/60" id="dbTabs">
             <button role="tab" data-tab="resumen" class="db-tab inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium">Resumen<span id="dbAlertasBadge" class="rounded-full bg-rose-600 px-1.5 text-[11px] font-semibold leading-5 text-white" hidden></span></button>
-            <button role="tab" data-tab="explorador" class="db-tab rounded-lg px-4 py-2 text-sm font-medium">Explorador de tablas</button>
+            <button role="tab" data-tab="tablero" class="db-tab rounded-lg px-4 py-2 text-sm font-medium">Tablero de IVA</button>
             <button role="tab" data-tab="conciliar" class="db-tab rounded-lg px-4 py-2 text-sm font-medium">Conciliar</button>
             <button role="tab" data-tab="comparativo" class="db-tab rounded-lg px-4 py-2 text-sm font-medium">Comparativo</button>
+            <button role="tab" data-tab="explorador" class="db-tab rounded-lg px-4 py-2 text-sm font-medium">Explorador de tablas</button>
           </div>
 
           <!-- Resumen -->
@@ -431,42 +445,66 @@
             </div>
           </div>
 
-          <!-- Explorador -->
-          <div id="tab-explorador" class="db-panel mt-6" hidden>
-            <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
-              <label for="dbTabla" class="sr-only">Tabla</label>
-              <select id="dbTabla" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></select>
-              <label for="dbBuscar" class="sr-only">Buscar</label>
-              <input id="dbBuscar" type="search" placeholder="Buscar en campos de texto (RFC, UUID, referencia…)" class="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" />
-              <div class="flex gap-2">
-                <button id="dbNuevo" type="button" class="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-500" hidden>Nuevo registro</button>
-                <button id="dbCsv" type="button" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900">Exportar CSV</button>
-                <button id="dbRecargar" type="button" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900">Actualizar</button>
+          <!-- Tablero de IVA -->
+          <div id="tab-tablero" class="db-panel mt-6 space-y-6" hidden>
+            <section id="tbCard" class="viz-root relative min-w-0 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950" aria-labelledby="tbTitulo">
+              <div class="flex flex-wrap items-start gap-x-4 gap-y-2">
+                <div class="min-w-0 flex-1">
+                  <h3 id="tbTitulo" class="font-semibold text-slate-900 dark:text-white">Tablero ejecutivo de IVA</h3>
+                  <p class="mt-0.5 text-xs text-slate-500">Determinación mensual en flujo de efectivo con todas las fuentes cargadas (CFDI, ERP, bancos y Data Stage), según la última ejecución de cada conciliación.</p>
+                </div>
               </div>
-            </div>
-            <form id="dbFiltroForm" class="mt-3 flex flex-wrap items-center gap-2 text-sm">
-              <label for="dbFCol" class="sr-only">Columna</label>
-              <select id="dbFCol" class="rounded-lg border border-slate-300 bg-white px-2 py-1.5 dark:border-slate-700 dark:bg-slate-900"></select>
-              <label for="dbFOp" class="sr-only">Condición</label>
-              <select id="dbFOp" class="rounded-lg border border-slate-300 bg-white px-2 py-1.5 dark:border-slate-700 dark:bg-slate-900">
-                <option value="eq">es igual a</option><option value="neq">es distinto de</option><option value="contiene">contiene</option><option value="empieza">empieza con</option>
-                <option value="gt">mayor que</option><option value="gte">mayor o igual</option><option value="lt">menor que</option><option value="lte">menor o igual</option>
-                <option value="es_nulo">está vacío</option><option value="no_nulo">no está vacío</option>
-              </select>
-              <label for="dbFVal" class="sr-only">Valor</label>
-              <input id="dbFVal" placeholder="valor" class="w-40 rounded-lg border border-slate-300 bg-white px-2 py-1.5 dark:border-slate-700 dark:bg-slate-900" />
-              <button type="submit" class="rounded-lg border border-slate-300 px-3 py-1.5 font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900">Agregar filtro</button>
-              <div id="dbFiltros" class="flex flex-wrap gap-2"></div>
-            </form>
-            <div class="mt-4 min-w-0 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
-              <div class="max-h-[560px] overflow-auto">
-                <table class="w-full text-left text-xs"><thead id="dbThead" class="sticky top-0 bg-slate-100 text-slate-600 dark:bg-slate-900 dark:text-slate-300"></thead><tbody id="dbTbody" class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950"></tbody></table>
+              <div class="mt-4 flex flex-wrap items-end gap-3">
+                <div id="tbEmpresaBox" hidden><label for="tbEmpresa" class="block text-xs font-medium text-slate-500">Empresa</label>
+                  <select id="tbEmpresa" class="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></select></div>
+                <div><label for="tbMes" class="block text-xs font-medium text-slate-500">Mes</label>
+                  <select id="tbMes" class="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></select></div>
+                <div id="tbCierreBox" class="flex flex-wrap items-end gap-2" hidden>
+                  <div><label for="tbCierreMes" class="block text-xs font-medium text-slate-500">Mes a conciliar</label>
+                    <input id="tbCierreMes" type="month" class="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" /></div>
+                  <button id="tbCierre" type="button" class="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-500 disabled:opacity-60" title="Ejecuta C1, C2, C3, C4, C6, C7, C8, C10, C5 y C9 del mes, en ese orden">Ejecutar todas las conciliaciones</button>
+                </div>
+                <span id="tbEstado" class="text-xs text-slate-500" role="status" aria-live="polite"></span>
               </div>
-              <div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
-                <span id="dbPaginaInfo"></span>
-                <div class="flex gap-2"><button id="dbPrev" type="button" class="rounded-md border border-slate-300 px-2.5 py-1 disabled:opacity-40 dark:border-slate-700">Anterior</button><button id="dbNext" type="button" class="rounded-md border border-slate-300 px-2.5 py-1 disabled:opacity-40 dark:border-slate-700">Siguiente</button></div>
+              <div id="tbCuerpo" class="mt-5">
+                <div id="tbVacio" class="rounded-xl border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-500 dark:border-slate-700" hidden></div>
+                <div id="tbDatos" hidden>
+                  <div class="grid gap-4 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
+                    <div id="tbHero" class="rounded-xl border border-slate-200 p-4 dark:border-slate-800"></div>
+                    <div id="tbKpis" class="grid grid-cols-2 gap-3 sm:grid-cols-3"></div>
+                  </div>
+                  <div class="mt-6 grid gap-6 xl:grid-cols-2">
+                    <figure class="min-w-0">
+                      <figcaption><span class="text-sm font-semibold text-slate-900 dark:text-white">Histórico: IVA trasladado cobrado y acreditable</span>
+                        <span class="block text-xs text-slate-500">Por mes, en pesos. El trasladado ya descuenta las notas de crédito emitidas y el acreditable las recibidas.</span></figcaption>
+                      <div id="tbLeyenda1" class="mt-2 flex flex-wrap gap-4 text-xs text-slate-600 dark:text-slate-400"></div>
+                      <div id="tbGrafHist" class="v-chart relative mt-2" tabindex="0" role="img"></div>
+                    </figure>
+                    <figure class="min-w-0">
+                      <figcaption><span class="text-sm font-semibold text-slate-900 dark:text-white">Saldo de IVA por mes y su variación</span>
+                        <span class="block text-xs text-slate-500">Arriba del cero, a cargo; abajo, a favor. El tooltip da la variación contra el mes anterior.</span></figcaption>
+                      <div id="tbLeyenda2" class="mt-2 flex flex-wrap gap-4 text-xs text-slate-600 dark:text-slate-400"></div>
+                      <div id="tbGrafSaldo" class="v-chart relative mt-2" tabindex="0" role="img"></div>
+                    </figure>
+                    <figure class="min-w-0">
+                      <figcaption><span class="text-sm font-semibold text-slate-900 dark:text-white">IVA que no se acreditó en el mes, por causa</span>
+                        <span class="block text-xs text-slate-500">IVA de C5 que queda fuera del acreditable: lo que se recupera atendiendo cada causa.</span></figcaption>
+                      <div id="tbGrafNoAcred" class="mt-3"></div>
+                    </figure>
+                    <figure class="min-w-0">
+                      <figcaption><span class="text-sm font-semibold text-slate-900 dark:text-white">Importe en riesgo por conciliación</span>
+                        <span class="block text-xs text-slate-500">Hallazgos abiertos del mes y su importe en riesgo, en pesos.</span></figcaption>
+                      <div id="tbGrafRiesgo" class="mt-3"></div>
+                    </figure>
+                  </div>
+                  <details class="mt-6 text-sm">
+                    <summary class="cursor-pointer text-xs font-medium text-brand-700 hover:underline dark:text-brand-300">Ver tabla de datos por mes</summary>
+                    <div id="tbTabla" class="mt-3 overflow-x-auto"></div>
+                  </details>
+                </div>
               </div>
-            </div>
+              <div id="tbTip" class="v-tip" role="tooltip" hidden></div>
+            </section>
           </div>
 
           <!-- Conciliar -->
@@ -565,6 +603,46 @@
               </table></div>
             </div>
           </div>
+
+          <!-- Explorador de tablas -->
+          <div id="tab-explorador" class="db-panel mt-6" hidden>
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <label for="dbTabla" class="sr-only">Tabla</label>
+              <select id="dbTabla" class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></select>
+              <label for="dbBuscar" class="sr-only">Buscar</label>
+              <input id="dbBuscar" type="search" placeholder="Buscar en campos de texto (RFC, UUID, referencia…)" class="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" />
+              <div class="flex gap-2">
+                <button id="dbNuevo" type="button" class="rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-500" hidden>Nuevo registro</button>
+                <button id="dbCsv" type="button" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900">Exportar CSV</button>
+                <button id="dbRecargar" type="button" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900">Actualizar</button>
+              </div>
+            </div>
+            <form id="dbFiltroForm" class="mt-3 flex flex-wrap items-center gap-2 text-sm">
+              <label for="dbFCol" class="sr-only">Columna</label>
+              <select id="dbFCol" class="rounded-lg border border-slate-300 bg-white px-2 py-1.5 dark:border-slate-700 dark:bg-slate-900"></select>
+              <label for="dbFOp" class="sr-only">Condición</label>
+              <select id="dbFOp" class="rounded-lg border border-slate-300 bg-white px-2 py-1.5 dark:border-slate-700 dark:bg-slate-900">
+                <option value="eq">es igual a</option><option value="neq">es distinto de</option><option value="contiene">contiene</option><option value="empieza">empieza con</option>
+                <option value="gt">mayor que</option><option value="gte">mayor o igual</option><option value="lt">menor que</option><option value="lte">menor o igual</option>
+                <option value="es_nulo">está vacío</option><option value="no_nulo">no está vacío</option>
+              </select>
+              <label for="dbFVal" class="sr-only">Valor</label>
+              <input id="dbFVal" placeholder="valor" class="w-40 rounded-lg border border-slate-300 bg-white px-2 py-1.5 dark:border-slate-700 dark:bg-slate-900" />
+              <button type="submit" class="rounded-lg border border-slate-300 px-3 py-1.5 font-medium hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-900">Agregar filtro</button>
+              <div id="dbFiltros" class="flex flex-wrap gap-2"></div>
+            </form>
+            <div class="mt-4 min-w-0 overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800">
+              <div class="max-h-[560px] overflow-auto">
+                <table class="w-full text-left text-xs"><thead id="dbThead" class="sticky top-0 bg-slate-100 text-slate-600 dark:bg-slate-900 dark:text-slate-300"></thead><tbody id="dbTbody" class="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950"></tbody></table>
+              </div>
+              <div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+                <span id="dbPaginaInfo"></span>
+                <div class="flex gap-2"><button id="dbPrev" type="button" class="rounded-md border border-slate-300 px-2.5 py-1 disabled:opacity-40 dark:border-slate-700">Anterior</button><button id="dbNext" type="button" class="rounded-md border border-slate-300 px-2.5 py-1 disabled:opacity-40 dark:border-slate-700">Siguiente</button></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Conciliar -->
         </div>
       </div>
 
@@ -1502,7 +1580,7 @@
     async function salir() {
       try { await sb.auth.signOut(); } catch (e) { /* sin red: igual se limpia la vista */ }
       st.usuario = null; st.meta = []; st.resumen = null; st.tabla = null; st.filtros = []; st.buscar = '';
-      alertasDatos = null; alertasTodas = false; resumenes = []; mostrar($('#dbResumenes'), false); $('#dbResumenHist').textContent = 'Ver historial'; $('#dbAlertasEmpresa').innerHTML = ''; mostrar($('#dbAlertasCard'), false); mostrar($('#dbAlertasBadge'), false);
+      alertasDatos = null; alertasTodas = false; resumenes = []; mostrar($('#dbResumenes'), false); $('#dbResumenHist').textContent = 'Ver historial'; $('#dbAlertasEmpresa').innerHTML = ''; mostrar($('#dbAlertasCard'), false); mostrar($('#dbAlertasBadge'), false); tb.datos = null; tb.sel = null; $('#tbEmpresa').innerHTML = ''; $('#tbCierreMes').value = ''; $('#tbEstado').textContent = '';
       st.filas = []; st.total = 0; st.pagina = 0; st.ejecucion = null; st.estatusFiltro = null; st.revFiltro = null;
       $('#dbTbody').innerHTML = ''; $('#dbThead').innerHTML = ''; $('#c1Body').innerHTML = ''; $('#c1Resumen').innerHTML = '';
       mostrar($('#dbModal'), false);
@@ -1525,6 +1603,7 @@
       if (nombre === 'explorador' && !st.tabla && st.meta.length) elegirTabla(st.meta[0].nombre);
       if (nombre === 'conciliar') prepararConciliar();
       if (nombre === 'comparativo') cargarComparativo();
+      if (nombre === 'tablero') cargarTablero();
     }
     $$('.db-tab').forEach(function (b) { b.addEventListener('click', function () { tab(b.dataset.tab); }); });
 
@@ -2492,6 +2571,327 @@
       finally { b.disabled = false; }
     });
     $('#dbAlertasEmpresa').addEventListener('change', cargarAlertas);
+
+    /* ---------------- Tablero ejecutivo de IVA ---------------- */
+    var tb = { datos: null, sel: null };
+    var NS = 'http://www.w3.org/2000/svg';
+    var CAUSA = {
+      PROVEEDOR_69B: 'Proveedor en lista 69-B', CFDI_CANCELADO: 'CFDI cancelado', PPD_SIN_REP: 'Pagada sin complemento de pago',
+      PAGO_SIN_BANCO: 'Pago sin confirmar en el banco', DIFERENCIA_IMPORTE: 'Diferencia de importe en el pago', DIFERENCIA_TC: 'Diferencia por tipo de cambio',
+      SIN_PAGO: 'Factura sin pagar (pendiente)', SOLO_CFDI: 'CFDI sin registro en el ERP'
+    };
+    var mesLargo = function (d) { var t = new Date(String(d).slice(0, 10) + 'T12:00:00'); var m = t.toLocaleDateString('es-MX', { month: 'long', year: 'numeric' }); return m.charAt(0).toUpperCase() + m.slice(1); };
+    var mesCorto = function (d) { var t = new Date(String(d).slice(0, 10) + 'T12:00:00'); return t.toLocaleDateString('es-MX', { month: 'short' }).replace('.', '') + ' ' + String(t.getFullYear()).slice(2); };
+    var pesos = function (v) { return '$' + fmtMonto(v); };
+    var compacto = function (v) {
+      var a = Math.abs(v), sg = v < 0 ? '−' : '';
+      if (a >= 1e6) return sg + '$' + (a / 1e6).toFixed(a >= 1e7 ? 0 : 1).replace('.0', '') + 'M';
+      if (a >= 1e4) return sg + '$' + Math.round(a / 1e3) + 'K';
+      return sg + '$' + Math.round(a).toLocaleString('es-MX');
+    };
+    var el = function (tag, attrs, parent) {
+      var n = document.createElementNS(NS, tag);
+      Object.keys(attrs || {}).forEach(function (k) { n.setAttribute(k, attrs[k]); });
+      if (parent) parent.appendChild(n);
+      return n;
+    };
+    var txt = function (parent, x, y, s, attrs) { var t = el('text', Object.assign({ x: x, y: y }, attrs || {}), parent); t.textContent = s; return t; };
+    // Ticks limpios entre min y max (incluye el cero)
+    function ticks(min, max, n) {
+      min = Math.min(0, min); max = Math.max(0, max);
+      if (min === max) max = 1;
+      var paso = Math.pow(10, Math.floor(Math.log10((max - min) / n))), err = (max - min) / n / paso;
+      paso *= err >= 7.5 ? 10 : err >= 3.5 ? 5 : err >= 1.5 ? 2 : 1;
+      var out = [];
+      for (var v = Math.floor(min / paso) * paso; v <= max + paso * 0.5; v += paso) out.push(Math.round(v * 100) / 100);
+      return out;
+    }
+    function tip(html, x, y) {
+      var t = $('#tbTip'), card = $('#tbCard').getBoundingClientRect();
+      t.innerHTML = ''; html.forEach(function (n) { t.appendChild(n); });
+      mostrar(t, true);
+      var w = t.offsetWidth, h = t.offsetHeight;
+      var left = Math.min(Math.max(8, x - card.left + 12), card.width - w - 8), top = y - card.top - h - 12;
+      if (top < 8) top = y - card.top + 16;
+      t.style.left = left + 'px'; t.style.top = top + 'px';
+    }
+    var ocultarTip = function () { mostrar($('#tbTip'), false); };
+    // Fila del tooltip: valor fuerte, nombre secundario, llave de línea del color de la serie
+    function filaTip(color, valor, nombre) {
+      var d = document.createElement('div'); d.className = 'flex items-center justify-between gap-3 py-0.5';
+      var izq = document.createElement('span'); izq.className = 'text-[11px]'; izq.style.color = 'var(--v-text2)';
+      if (color) { var k = document.createElement('span'); k.className = 'v-key'; k.style.background = color; izq.appendChild(k); }
+      izq.appendChild(document.createTextNode(nombre));
+      var der = document.createElement('strong'); der.className = 'v-num'; der.textContent = valor;
+      d.appendChild(izq); d.appendChild(der); return d;
+    }
+    function tituloTip(s) { var d = document.createElement('div'); d.className = 'mb-1 font-semibold'; d.textContent = s; return d; }
+
+    // Histórico: dos líneas (trasladado cobrado neto y acreditable) con cruz de guía y tooltip
+    function grafHistorico(cont, meses) {
+      cont.innerHTML = ''; ocultarTip();
+      var W = Math.max(280, cont.clientWidth), H = 230, m = { t: 14, r: 90, b: 28, l: 56 };
+      var s1 = 'var(--v-s1)', s2 = 'var(--v-s2)';
+      var serie = [
+        { n: 'IVA trasladado cobrado', c: s1, v: meses.map(function (x) { return Number(x.cobrado) - Number(x.notas_emitidas); }) },
+        { n: 'IVA acreditable', c: s2, v: meses.map(function (x) { return Number(x.acreditable); }) }
+      ];
+      var todos = serie[0].v.concat(serie[1].v), tk = ticks(Math.min.apply(null, todos), Math.max.apply(null, todos), 4);
+      var y0 = tk[0], y1 = tk[tk.length - 1], iw = W - m.l - m.r, ih = H - m.t - m.b;
+      var X = function (i) { return m.l + (meses.length === 1 ? iw / 2 : iw * i / (meses.length - 1)); };
+      var Y = function (v) { return m.t + ih - (v - y0) / (y1 - y0) * ih; };
+      var svg = el('svg', { width: W, height: H, viewBox: '0 0 ' + W + ' ' + H, 'aria-hidden': 'true' }, cont);
+      tk.forEach(function (v) {
+        el('line', { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), stroke: v === 0 ? 'var(--v-axis)' : 'var(--v-grid)', 'stroke-width': 1 }, svg);
+        txt(svg, m.l - 8, Y(v) + 4, compacto(v), { 'text-anchor': 'end', 'font-size': 11, fill: 'var(--v-muted)', class: 'v-num' });
+      });
+      meses.forEach(function (x, i) {
+        if (meses.length > 8 && i % 2 && i !== meses.length - 1) return;
+        txt(svg, X(i), H - 8, mesCorto(x.periodo_desde), { 'text-anchor': 'middle', 'font-size': 11, fill: 'var(--v-muted)' });
+      });
+      var guia = el('line', { y1: m.t, y2: m.t + ih, stroke: 'var(--v-axis)', 'stroke-width': 1, visibility: 'hidden' }, svg);
+      serie.forEach(function (sr) {
+        if (meses.length > 1) el('polyline', { points: sr.v.map(function (v, i) { return X(i) + ',' + Y(v); }).join(' '), fill: 'none', stroke: sr.c, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, svg);
+        sr.v.forEach(function (v, i) {
+          var sel = meses[i].periodo_desde === tb.sel;
+          el('circle', { cx: X(i), cy: Y(v), r: sel ? 5 : 4, fill: sr.c, stroke: 'var(--v-surface)', 'stroke-width': 2 }, svg);
+        });
+      });
+      // Etiquetas directas al final (solo el último mes), con guía si se enciman
+      var ult = meses.length - 1, ya = [Y(serie[0].v[ult]), Y(serie[1].v[ult])];
+      if (Math.abs(ya[0] - ya[1]) < 26) { var mid = (ya[0] + ya[1]) / 2, arriba = ya[0] <= ya[1] ? 0 : 1; ya[arriba] = mid - 14; ya[1 - arriba] = mid + 14; }
+      serie.forEach(function (sr, k) {
+        var yv = Y(sr.v[ult]);
+        if (Math.abs(ya[k] - yv) > 1) el('line', { x1: X(ult) + 6, y1: yv, x2: X(ult) + 12, y2: ya[k], stroke: 'var(--v-axis)', 'stroke-width': 1 }, svg);
+        txt(svg, X(ult) + 14, ya[k] + 4, compacto(sr.v[ult]), { 'font-size': 11, 'font-weight': 600, fill: 'var(--v-text)', class: 'v-num' });
+      });
+      $('#tbLeyenda1').innerHTML = '';
+      serie.forEach(function (sr) {
+        var sp = document.createElement('span'); sp.className = 'inline-flex items-center';
+        var k = document.createElement('span'); k.className = 'v-key'; k.style.background = sr.c; sp.appendChild(k);
+        sp.appendChild(document.createTextNode(sr.n)); $('#tbLeyenda1').appendChild(sp);
+      });
+      var verMes = function (i, cx, cy) {
+        guia.setAttribute('x1', X(i)); guia.setAttribute('x2', X(i)); guia.setAttribute('visibility', 'visible');
+        var prev = i > 0 ? meses[i - 1] : null;
+        var filas = [tituloTip(mesLargo(meses[i].periodo_desde))];
+        serie.forEach(function (sr) {
+          filas.push(filaTip(sr.c, pesos(sr.v[i]), sr.n));
+          if (prev) { var dv = sr.v[i] - sr.v[i - 1]; filas.push(filaTip(null, (dv >= 0 ? '+' : '−') + pesos(Math.abs(dv)).slice(0), '  vs mes anterior')); }
+        });
+        tip(filas, cx, cy);
+      };
+      var cerca = function (px) { var best = 0; meses.forEach(function (x, i) { if (Math.abs(X(i) - px) < Math.abs(X(best) - px)) best = i; }); return best; };
+      var hit = el('rect', { x: m.l - 10, y: m.t, width: iw + 20, height: ih, fill: 'transparent' }, svg);
+      hit.addEventListener('pointermove', function (ev) { var r = svg.getBoundingClientRect(); var i = cerca(ev.clientX - r.left); verMes(i, ev.clientX, r.top + Y(Math.max(serie[0].v[i], serie[1].v[i]))); });
+      hit.addEventListener('pointerleave', function () { guia.setAttribute('visibility', 'hidden'); ocultarTip(); });
+      navegarTeclado(cont, meses.length, function (i) { var r = svg.getBoundingClientRect(); verMes(i, r.left + X(i), r.top + Y(Math.max(serie[0].v[i], serie[1].v[i]))); },
+        function () { guia.setAttribute('visibility', 'hidden'); ocultarTip(); });
+      cont.setAttribute('aria-label', 'Histórico mensual de IVA trasladado cobrado y acreditable. ' + meses.map(function (x, i) {
+        return mesLargo(x.periodo_desde) + ': trasladado ' + pesos(serie[0].v[i]) + ', acreditable ' + pesos(serie[1].v[i]); }).join('; '));
+    }
+
+    // Saldo por mes: columnas divergentes desde el cero (a cargo arriba, a favor abajo)
+    function grafSaldo(cont, meses) {
+      cont.innerHTML = ''; ocultarTip();
+      var W = Math.max(280, cont.clientWidth), H = 230, m = { t: 22, r: 16, b: 28, l: 56 };
+      var v = meses.map(function (x) { return Number(x.saldo); });
+      var tk = ticks(Math.min.apply(null, v), Math.max.apply(null, v), 4), y0 = tk[0], y1 = tk[tk.length - 1];
+      var iw = W - m.l - m.r, ih = H - m.t - m.b, banda = iw / meses.length, bw = Math.min(24, banda * 0.6);
+      var Y = function (x) { return m.t + ih - (x - y0) / (y1 - y0) * ih; };
+      var svg = el('svg', { width: W, height: H, viewBox: '0 0 ' + W + ' ' + H, 'aria-hidden': 'true' }, cont);
+      tk.forEach(function (t) {
+        el('line', { x1: m.l, x2: W - m.r, y1: Y(t), y2: Y(t), stroke: t === 0 ? 'var(--v-axis)' : 'var(--v-grid)', 'stroke-width': 1 }, svg);
+        txt(svg, m.l - 8, Y(t) + 4, compacto(t), { 'text-anchor': 'end', 'font-size': 11, fill: 'var(--v-muted)', class: 'v-num' });
+      });
+      var barras = [];
+      meses.forEach(function (x, i) {
+        var cx = m.l + banda * (i + 0.5), a = Y(0), b = Y(v[i]), r = Math.min(4, Math.abs(a - b) / 2), x0 = cx - bw / 2, x1 = cx + bw / 2;
+        // Extremo de datos redondeado, base cuadrada en el cero
+        var d = v[i] >= 0
+          ? 'M' + x0 + ',' + a + 'V' + (b + r) + 'Q' + x0 + ',' + b + ' ' + (x0 + r) + ',' + b + 'H' + (x1 - r) + 'Q' + x1 + ',' + b + ' ' + x1 + ',' + (b + r) + 'V' + a + 'Z'
+          : 'M' + x0 + ',' + a + 'V' + (b - r) + 'Q' + x0 + ',' + b + ' ' + (x0 + r) + ',' + b + 'H' + (x1 - r) + 'Q' + x1 + ',' + b + ' ' + x1 + ',' + (b - r) + 'V' + a + 'Z';
+        var sel = x.periodo_desde === tb.sel;
+        var pth = el('path', { d: d, fill: v[i] >= 0 ? 'var(--v-cargo)' : 'var(--v-favor)', opacity: sel ? 1 : 0.55 }, svg);
+        barras.push(pth);
+        if (meses.length <= 8 || i % 2 === 0 || i === meses.length - 1) txt(svg, cx, H - 8, mesCorto(x.periodo_desde), { 'text-anchor': 'middle', 'font-size': 11, fill: 'var(--v-muted)' });
+        if (sel) txt(svg, cx, v[i] >= 0 ? b - 6 : b + 14, compacto(v[i]), { 'text-anchor': 'middle', 'font-size': 11, 'font-weight': 600, fill: 'var(--v-text)', class: 'v-num' });
+      });
+      $('#tbLeyenda2').innerHTML = '';
+      [['var(--v-cargo)', 'A cargo'], ['var(--v-favor)', 'A favor']].forEach(function (l) {
+        var sp = document.createElement('span'); sp.className = 'inline-flex items-center gap-1.5';
+        var k = document.createElement('span'); k.style.cssText = 'display:inline-block;width:10px;height:10px;border-radius:2px;background:' + l[0]; sp.appendChild(k);
+        sp.appendChild(document.createTextNode(l[1])); $('#tbLeyenda2').appendChild(sp);
+      });
+      var verMes = function (i, px, py) {
+        barras.forEach(function (b, k) { b.setAttribute('opacity', k === i || meses[k].periodo_desde === tb.sel ? 1 : 0.55); });
+        var filas = [tituloTip(mesLargo(meses[i].periodo_desde)), filaTip(v[i] >= 0 ? 'var(--v-cargo)' : 'var(--v-favor)', pesos(Math.abs(v[i])), v[i] >= 0 ? 'A cargo' : 'A favor')];
+        if (i > 0) {
+          var dv = v[i] - v[i - 1], pct = v[i - 1] ? Math.abs(dv / v[i - 1] * 100) : null;
+          filas.push(filaTip(null, (dv > 0 ? '+' : dv < 0 ? '−' : '') + pesos(Math.abs(dv)) + (pct != null ? ' (' + pct.toFixed(1) + '%)' : ''), 'Variación del saldo'));
+          var nota = document.createElement('div'); nota.className = 'mt-1 text-[11px]'; nota.style.color = 'var(--v-muted)';
+          nota.textContent = dv > 0 ? 'Más a cargo / menos a favor que el mes anterior' : dv < 0 ? 'Menos a cargo / más a favor que el mes anterior' : 'Sin cambio contra el mes anterior';
+          filas.push(nota);
+        }
+        tip(filas, px, py);
+      };
+      meses.forEach(function (x, i) {
+        var hit = el('rect', { x: m.l + banda * i, y: m.t, width: banda, height: ih, fill: 'transparent' }, svg);
+        hit.addEventListener('pointermove', function (ev) { verMes(i, ev.clientX, ev.clientY); });
+        hit.addEventListener('pointerleave', function () { barras.forEach(function (b, k) { b.setAttribute('opacity', meses[k].periodo_desde === tb.sel ? 1 : 0.55); }); ocultarTip(); });
+      });
+      navegarTeclado(cont, meses.length, function (i) { var r = svg.getBoundingClientRect(); verMes(i, r.left + m.l + banda * (i + 0.5), r.top + Y(Math.max(0, v[i]))); }, ocultarTip);
+      cont.setAttribute('aria-label', 'Saldo de IVA por mes. ' + meses.map(function (x, i) { return mesLargo(x.periodo_desde) + ': ' + (v[i] >= 0 ? 'a cargo ' : 'a favor ') + pesos(Math.abs(v[i])); }).join('; '));
+    }
+
+    // Teclado: con el foco en el gráfico, ← y → recorren los meses
+    function navegarTeclado(cont, n, ver, salir) {
+      var i = n - 1;
+      cont.onkeydown = function (ev) {
+        if (ev.key === 'ArrowLeft') { i = Math.max(0, i - 1); ver(i); ev.preventDefault(); }
+        else if (ev.key === 'ArrowRight') { i = Math.min(n - 1, i + 1); ver(i); ev.preventDefault(); }
+        else if (ev.key === 'Escape') salir();
+      };
+      cont.onfocus = function () { ver(i); };
+      cont.onblur = salir;
+    }
+
+    // Barras horizontales ordenadas (un solo tono), valor al final de la barra
+    function barrasOrdenadas(cont, filas, vacio) {
+      cont.innerHTML = '';
+      if (!filas.length) { cont.innerHTML = '<p class="rounded-lg border border-dashed border-slate-300 px-3 py-4 text-xs text-slate-500 dark:border-slate-700">' + esc(vacio) + '</p>'; return; }
+      var max = Math.max.apply(null, filas.map(function (f) { return f.v; })) || 1;
+      var ul = document.createElement('ul'); ul.className = 'space-y-2.5';
+      filas.forEach(function (f) {
+        var li = document.createElement('li'); li.className = 'grid grid-cols-[minmax(0,11rem)_minmax(0,1fr)] items-center gap-3 text-xs sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]';
+        var nom = document.createElement('div'); nom.className = 'min-w-0';
+        var n1 = document.createElement('div'); n1.className = 'truncate font-medium'; n1.style.color = 'var(--v-text)'; n1.textContent = f.n; n1.title = f.n;
+        var n2 = document.createElement('div'); n2.className = 'truncate'; n2.style.color = 'var(--v-muted)'; n2.textContent = f.sub || '';
+        nom.appendChild(n1); if (f.sub) nom.appendChild(n2);
+        var pista = document.createElement('div'); pista.className = 'flex items-center gap-2';
+        var barra = document.createElement('div'); barra.className = 'v-bar h-4'; barra.style.background = 'var(--v-s1)';
+        barra.style.width = 'calc((100% - 5.5rem) * ' + (f.v / max).toFixed(4) + ')'; barra.style.minWidth = f.v > 0 ? '3px' : '0';
+        var val = document.createElement('span'); val.className = 'v-num shrink-0 font-semibold'; val.style.color = 'var(--v-text)'; val.textContent = compacto(f.v);
+        val.title = pesos(f.v);
+        pista.appendChild(barra); pista.appendChild(val);
+        li.appendChild(nom); li.appendChild(pista); ul.appendChild(li);
+      });
+      cont.appendChild(ul);
+    }
+
+    function tileIva(etq, valor, previo, nota) {
+      var d = document.createElement('div'); d.className = 'min-w-0 rounded-xl border border-slate-200 p-3 dark:border-slate-800';
+      var a = document.createElement('div'); a.className = 'text-xs font-medium'; a.style.color = 'var(--v-text2)'; a.textContent = etq;
+      var b = document.createElement('div'); b.className = 'mt-1 truncate text-lg font-semibold'; b.style.color = 'var(--v-text)'; b.textContent = pesos(valor); b.title = pesos(valor);
+      d.appendChild(a); d.appendChild(b);
+      var c = document.createElement('div'); c.className = 'mt-0.5 text-[11px]'; c.style.color = 'var(--v-muted)';
+      if (previo != null) { var dv = valor - previo; c.textContent = (dv > 0 ? '▲ +' : dv < 0 ? '▼ −' : '= ') + (dv ? compacto(Math.abs(dv)).replace('−', '') : 'sin cambio') + ' vs mes anterior'; }
+      else c.textContent = nota || 'Sin mes anterior para comparar';
+      d.appendChild(c);
+      return d;
+    }
+
+    function pintarTablero() {
+      var d = tb.datos, meses = (d && d.meses) || [];
+      mostrar($('#tbVacio'), !meses.length); mostrar($('#tbDatos'), meses.length > 0);
+      if (!meses.length) {
+        $('#tbVacio').textContent = 'Todavía no hay una determinación de IVA para esta empresa: elige el mes y ejecuta todas las conciliaciones.';
+        $('#tbMes').innerHTML = ''; return;
+      }
+      if (!tb.sel || !meses.some(function (x) { return x.periodo_desde === tb.sel; })) tb.sel = meses[meses.length - 1].periodo_desde;
+      $('#tbMes').innerHTML = meses.slice().reverse().map(function (x) { return '<option value="' + x.periodo_desde + '"' + (x.periodo_desde === tb.sel ? ' selected' : '') + '>' + esc(mesLargo(x.periodo_desde)) + '</option>'; }).join('');
+      var i = meses.findIndex(function (x) { return x.periodo_desde === tb.sel; }), x = meses[i], p = i > 0 ? meses[i - 1] : null;
+      var n = function (o, k) { return o ? Number(o[k]) : null; };
+      var saldo = Number(x.saldo), favor = saldo < 0;
+      var hero = $('#tbHero'); hero.innerHTML = '';
+      var h1 = document.createElement('div'); h1.className = 'text-xs font-medium'; h1.style.color = 'var(--v-text2)';
+      h1.textContent = (favor ? 'IVA a favor' : saldo > 0 ? 'IVA a cargo' : 'IVA en cero') + ' · ' + mesLargo(x.periodo_desde);
+      var h2 = document.createElement('div'); h2.className = 'mt-1 flex items-center gap-2';
+      var dot = document.createElement('span'); dot.style.cssText = 'display:inline-block;width:10px;height:10px;border-radius:999px;background:' + (favor ? 'var(--v-favor)' : 'var(--v-cargo)');
+      var num = document.createElement('span'); num.className = 'min-w-0 whitespace-nowrap font-semibold tracking-tight'; num.style.color = 'var(--v-text)'; num.textContent = pesos(Math.abs(saldo));
+      num.style.fontSize = '3rem'; num.style.lineHeight = '1.1';
+      h2.appendChild(dot); h2.appendChild(num);
+      var h3 = document.createElement('div'); h3.className = 'mt-2 text-xs'; h3.style.color = 'var(--v-muted)';
+      h3.textContent = 'Trasladado cobrado ' + pesos(Number(x.cobrado) - Number(x.notas_emitidas)) + ' − acreditable ' + pesos(x.acreditable) + '.';
+      var h4 = document.createElement('div'); h4.className = 'mt-1 text-xs'; h4.style.color = 'var(--v-muted)';
+      h4.textContent = p ? 'Mes anterior: ' + (Number(p.saldo) < 0 ? 'a favor ' : 'a cargo ') + pesos(Math.abs(Number(p.saldo))) + '.' : 'Primer mes con determinación.';
+      var h5 = document.createElement('div'); h5.className = 'mt-3 border-t border-slate-200 pt-2 text-[11px] dark:border-slate-800'; h5.style.color = 'var(--v-muted)';
+      h5.textContent = 'IVA retenido a enterar: ' + pesos(x.retenido) + ' (se declara aparte). C5 #' + x.ejecucion_c5 + ' del ' + fechaHora(x.ejecutado_en) + ' · ' + x.reglas_ejecutadas + ' de 10 conciliaciones.';
+      [h1, h2, h3, h4, h5].forEach(function (e) { hero.appendChild(e); });
+      // La cifra principal se reduce lo necesario para caber en su tarjeta (mínimo 1.75rem)
+      var tam = 48; while (tam > 28 && h2.scrollWidth > h2.clientWidth) { tam -= 2; num.style.fontSize = tam + 'px'; }
+      var k = $('#tbKpis'); k.innerHTML = '';
+      [['IVA trasladado (facturado)', 'trasladado'], ['IVA cobrado', 'cobrado'], ['IVA pendiente de cobro', 'pendiente_cobro'],
+       ['IVA acreditable', 'acreditable'], ['IVA pagado', 'pagado'], ['IVA pendiente de pago', 'pendiente_pago']].forEach(function (t) {
+        k.appendChild(tileIva(t[0], Number(x[t[1]]), n(p, t[1])));
+      });
+      grafHistorico($('#tbGrafHist'), meses);
+      grafSaldo($('#tbGrafSaldo'), meses);
+      barrasOrdenadas($('#tbGrafNoAcred'), (x.no_acreditable || []).map(function (r) {
+        return { n: CAUSA[r.estatus] || r.estatus, sub: r.partidas + ' partida' + (r.partidas === 1 ? '' : 's') + ' · ' + r.estatus, v: Number(r.iva) };
+      }), 'Todo el IVA del mes quedó acreditado.');
+      barrasOrdenadas($('#tbGrafRiesgo'), (x.riesgo_por_regla || []).filter(function (r) { return Number(r.importe_riesgo) > 0; })
+        .sort(function (a, b) { return Number(b.importe_riesgo) - Number(a.importe_riesgo); }).map(function (r) {
+          return { n: r.regla + ' · ' + r.conciliacion, sub: r.hallazgos + ' hallazgo' + (r.hallazgos === 1 ? '' : 's'), v: Number(r.importe_riesgo) };
+        }), 'Sin hallazgos con importe en riesgo en el mes.');
+      var cols = [['Mes', null], ['Trasladado', 'trasladado'], ['Cobrado', 'cobrado'], ['Pend. cobro', 'pendiente_cobro'], ['Notas emitidas', 'notas_emitidas'],
+                  ['Pagado', 'pagado'], ['Pend. pago', 'pendiente_pago'], ['Acreditable', 'acreditable'], ['Notas recibidas', 'notas_recibidas'], ['Saldo (+ cargo / − favor)', 'saldo'], ['Retenido', 'retenido']];
+      $('#tbTabla').innerHTML = '<table class="w-full min-w-[860px] text-left text-xs"><thead class="uppercase tracking-wider text-slate-500"><tr>' +
+        cols.map(function (c, j) { return '<th class="py-2 pr-3 font-medium' + (j ? ' text-right' : '') + '">' + c[0] + '</th>'; }).join('') + '</tr></thead><tbody class="divide-y divide-slate-100 dark:divide-slate-800">' +
+        meses.map(function (r) { return '<tr' + (r.periodo_desde === tb.sel ? ' class="font-semibold"' : '') + '>' + cols.map(function (c, j) {
+          return j ? '<td class="v-num py-2 pr-3 text-right">' + fmtMonto(r[c[1]]) + '</td>' : '<td class="py-2 pr-3">' + esc(mesLargo(r.periodo_desde)) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table>';
+    }
+
+    async function cargarTablero() {
+      var lista = st.resumen && st.resumen.empresas ? st.resumen.empresas : [], sel = $('#tbEmpresa');
+      if (!sel.options.length && lista.length) {
+        sel.innerHTML = lista.map(function (e) { return '<option value="' + e.empresa_id + '">' + esc(e.razon_social) + ' · ' + esc(e.rfc) + '</option>'; }).join('');
+        if ($('#dbAlertasEmpresa').value) sel.value = $('#dbAlertasEmpresa').value;
+        mostrar($('#tbEmpresaBox'), lista.length > 1);
+      }
+      var emp = sel.value;
+      if (!emp) { mostrar($('#tbCard'), true); mostrar($('#tbDatos'), false); mostrar($('#tbVacio'), true); $('#tbVacio').textContent = 'Primero carga datos de una empresa.'; return; }
+      mostrar($('#tbCard'), true);
+      var editor = st.usuario && st.usuario.rol !== 'LECTOR';
+      mostrar($('#tbCierreBox'), !!editor);
+      $('#tbCuerpo').classList.add('v-cargando');
+      try { tb.datos = await api('tablero_iva', { empresa_id: emp, meses: 12 }); }
+      catch (e) { $('#tbCuerpo').classList.remove('v-cargando'); return manejarError(e); }
+      $('#tbCuerpo').classList.remove('v-cargando');
+      if (!$('#tbCierreMes').value) {
+        var ms = tb.datos.meses || [];
+        if (ms.length) $('#tbCierreMes').value = String(ms[ms.length - 1].periodo_desde).slice(0, 7);
+        else { var h = new Date(); h = new Date(h.getFullYear(), h.getMonth() - 1, 1); $('#tbCierreMes').value = h.getFullYear() + '-' + String(h.getMonth() + 1).padStart(2, '0'); }
+      }
+      pintarTablero();
+    }
+    $('#tbMes').addEventListener('change', function () { tb.sel = this.value; pintarTablero(); });
+    $('#tbEmpresa').addEventListener('change', function () { tb.sel = null; $('#tbCierreMes').value = ''; cargarTablero(); });
+    $('#tbCierre').addEventListener('click', async function () {
+      var mes = $('#tbCierreMes').value;
+      if (!/^\d{4}-\d{2}$/.test(mes)) return toast('Elige el mes a conciliar');
+      var nombre = mesLargo(mes + '-01');
+      if (!confirm('Se ejecutarán las 10 conciliaciones de ' + nombre + ' en este orden:\nC1, C2, C3, C4, C6, C7, C8, C10, C5 y C9.\n\nCada regla usa las fuentes cargadas hasta hoy y los cruces de las anteriores. Las revisiones de partidas que no cambiaron se conservan.\n\n¿Continuar?')) return;
+      var b = this; b.disabled = true; b.textContent = 'Conciliando…';
+      $('#tbEstado').textContent = 'Ejecutando las 10 conciliaciones de ' + nombre + '…';
+      try {
+        var r = await api('ejecutar_cierre', { empresa_id: $('#tbEmpresa').value, mes: mes });
+        var ok = r.corridas.reduce(function (a, c) { return a + Number(c.total_conciliadas); }, 0), tot = r.corridas.reduce(function (a, c) { return a + Number(c.total_partidas); }, 0);
+        $('#tbEstado').textContent = nombre + ': ' + r.corridas.length + ' conciliaciones ejecutadas (' + r.corridas.map(function (c) { return c.regla_codigo + ' #' + c.ejecucion_id; }).join(', ') + ') · ' + ok + ' de ' + tot + ' partidas conciliadas.';
+        toast('Conciliaciones de ' + nombre + ' ejecutadas');
+        tb.sel = mes + '-01';
+        await cargarResumen();
+        if (alertasDatos) cargarAlertas();
+        await cargarTablero();
+      } catch (e) { $('#tbEstado').textContent = ''; manejarError(e); }
+      finally { b.disabled = false; b.textContent = 'Ejecutar todas las conciliaciones'; }
+    });
+    // Los gráficos se rehacen al cambiar el ancho de la tarjeta
+    if (window.ResizeObserver) {
+      var tbAncho = 0;
+      new ResizeObserver(function (en) { var w = Math.round(en[0].contentRect.width); if (tb.datos && w !== tbAncho && !$('#tbDatos').hidden) { tbAncho = w; pintarTablero(); } }).observe($('#tbCard'));
+    }
+    // El tema claro/oscuro cambia las variables: los SVG usan var(), no hace falta repintar
 
     // Exporta todas las alertas (no solo las visibles) y el historial de resúmenes guardados
     $('#dbAlertasExcel').addEventListener('click', async function () {
