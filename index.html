@@ -1974,12 +1974,15 @@
       };
       $('#c1Resumen').insertAdjacentHTML('beforeend', '<div id="c1RevFiltro" role="group" aria-label="Filtrar por revisión" class="flex flex-wrap items-center gap-2 sm:ml-auto"><span class="text-xs font-medium text-slate-500">Revisión</span>' +
         botonRev('', 'Todas', null) +
-        Object.keys(REV_FILTROS).map(function (k) { return botonRev(k, REV_FILTROS[k][0], porEstatus.filter(REV_FILTROS[k][1]).length); }).join('') + '</div>');
+        Object.keys(REV_FILTROS).map(function (k) { return botonRev(k, REV_FILTROS[k][0], porEstatus.filter(REV_FILTROS[k][1]).length); }).join('') +
+        '<button type="button" id="c1Excel" class="rounded-lg border border-emerald-600/40 px-3 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-60 dark:text-emerald-300 dark:hover:bg-emerald-500/10">Exportar a Excel</button></div>');
       $$('.c1-est').forEach(function (b) { b.addEventListener('click', function () { st.estatusFiltro = b.dataset.s || null; verResultados(); }); });
       $$('.c1-revf').forEach(function (b) { b.addEventListener('click', function () { st.revFiltro = b.dataset.rf || null; verResultados(); }); });
       if ($('#c5Papel')) $('#c5Papel').addEventListener('click', generarPapel);
       if ($('#c9Papel')) $('#c9Papel').addEventListener('click', generarPapelRetenciones);
       var filas = porEstatus.filter(function (f) { return !st.revFiltro || !REV_FILTROS[st.revFiltro] || REV_FILTROS[st.revFiltro][1](f); });
+      st.vista = { regla: regla, ej: ejSel, filas: filas, total: r.filas.length, estatus: st.estatusFiltro, revision: st.revFiltro ? REV_FILTROS[st.revFiltro][0] : null };
+      $('#c1Excel').addEventListener('click', exportarResultados);
       var puedeRevisar = st.usuario && st.usuario.rol !== 'LECTOR';
       $('#c1Body').innerHTML = filas.map(function (f) {
         var rev = f.revisado_por ? '<div class="text-xs text-emerald-700 dark:text-emerald-400">✓ ' + esc(f.revisado_por) +
@@ -2052,6 +2055,71 @@
       } catch (e) { manejarError(e); }
       finally { b.disabled = false; }
     });
+
+    /* ---------------- Exportar la tabla de resultados (Excel) ---------------- */
+    // Exporta exactamente lo que se ve: mismas columnas que la tabla y los filtros aplicados.
+    function textoCelda(html) {
+      var d = document.createElement('div'); d.innerHTML = html;
+      $$('div', d).forEach(function (x) { x.insertAdjacentText('beforebegin', ' · '); });
+      var t = d.textContent.replace(/\s+/g, ' ').trim();
+      return t === '—' ? '' : t;
+    }
+    async function exportarResultados() {
+      var v = st.vista, btn = $('#c1Excel');
+      if (!v) return;
+      if (!v.filas.length) return toast('No hay partidas que exportar con estos filtros');
+      btn.disabled = true; btn.textContent = 'Generando…';
+      try {
+        await cargarXLSX();
+        var X = window.XLSX, cols = COLUMNAS[v.regla];
+        var enc = ['Resultado'].concat(cols.map(function (c) { return c[0]; }))
+          .concat(['Diferencia', 'Nivel de cruce', 'Estatus', 'Descripción', 'Comentario', 'Revisado por', 'Revisado en', 'Revisión conservada de']);
+        var numCol = {};                                     // columnas de dinero de la regla
+        var filas = v.filas.map(function (f) {
+          var fila = [Number(f.resultado_id)];
+          cols.forEach(function (c, i) {
+            var t = textoCelda(c[2](f));
+            if (c[1].indexOf('text-right') > -1 && /^-?[\d,]+\.\d{2}$/.test(t)) { fila.push(Number(t.replace(/,/g, ''))); numCol[i + 1] = true; }
+            else fila.push(t);
+          });
+          return fila.concat([f.diferencia == null ? null : Number(f.diferencia), f.nivel_cruce ? 'N' + f.nivel_cruce : '', f.estatus,
+            T.STATUS && T.STATUS[f.estatus] ? T.STATUS[f.estatus].d : '', f.comentario || '', f.revisado_por || '', fechaHora(f.revisado_en),
+            f.revision_heredada_de ? '#' + f.revision_heredada_de : '']);
+        });
+        var ej = v.ej, emp = $('#c1Empresa').selectedOptions[0];
+        var periodo = ej ? String(ej.periodo_desde).split('-').reverse().join('/') + ' al ' + String(ej.periodo_hasta).split('-').reverse().join('/') : '';
+        var filtro = [v.estatus ? 'estatus ' + v.estatus : 'todos los estatus', v.revision ? 'revisión: ' + v.revision.toLowerCase() : 'todas las revisiones'].join(' · ');
+        var cab = [
+          ['Resultados ' + v.regla + ' · ejecución #' + st.ejecucion],
+          ['Empresa', emp ? emp.textContent : ''],
+          ['Periodo', periodo],
+          ['Filtro', filtro + ' (' + v.filas.length + ' de ' + v.total + ' partidas)'],
+          ['Generado', fechaHora(new Date().toISOString())],
+          []
+        ];
+        var ws = X.utils.aoa_to_sheet(cab.concat([enc]).concat(filas));
+        var r0 = cab.length + 1;                             // fila de encabezados (base 1)
+        var dif = enc.indexOf('Diferencia');
+        Object.keys(ws).forEach(function (k) {
+          if (k[0] === '!') return;
+          var c = X.utils.decode_cell(k);
+          if (c.r >= r0 && ws[k].t === 'n' && (numCol[c.c] || c.c === dif)) ws[k].z = '#,##0.00;[Red]-#,##0.00';
+        });
+        ws['!autofilter'] = { ref: X.utils.encode_range({ s: { r: r0 - 1, c: 0 }, e: { r: r0 - 1 + filas.length, c: enc.length - 1 } }) };
+        ws['!cols'] = enc.map(function (h, i) {
+          var m = h.length;
+          filas.forEach(function (f) { var x = f[i] == null ? '' : String(f[i]); if (x.length > m) m = x.length; });
+          return { wch: Math.min(Math.max(m + 2, 10), 60) };
+        });
+        var wb = X.utils.book_new();
+        X.utils.book_append_sheet(wb, ws, 'Resultados ' + v.regla);
+        var nombre = 'resultados_' + v.regla + '_ejecucion_' + st.ejecucion + (v.estatus ? '_' + v.estatus : '') +
+          (st.revFiltro ? '_' + st.revFiltro : '') + '.xlsx';
+        X.writeFile(wb, nombre);
+        toast('Excel descargado: ' + nombre);
+      } catch (e) { manejarError(e); }
+      finally { btn.disabled = false; btn.textContent = 'Exportar a Excel'; }
+    }
 
     /* ---------------- Papel de trabajo de IVA (Excel) ---------------- */
     var xlsxPromesa = null;
