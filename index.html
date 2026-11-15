@@ -462,9 +462,12 @@
                 <div id="tbCierreBox" class="flex flex-wrap items-end gap-2" hidden>
                   <div><label for="tbCierreMes" class="block text-xs font-medium text-slate-500">Mes a conciliar</label>
                     <input id="tbCierreMes" type="month" class="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" /></div>
+                  <div><label for="tbDiasC4" class="block text-xs font-medium text-slate-500">Tolerancia de días · solo C4</label>
+                    <input id="tbDiasC4" type="number" min="0" max="60" step="1" inputmode="numeric" aria-describedby="tbDiasC4Ayuda" class="mt-1 w-28 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" /></div>
                   <button id="tbCierre" type="button" class="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-500 disabled:opacity-60" title="Ejecuta C1, C2, C3, C4, C6, C7, C8, C10, C5 y C9 del mes, en ese orden">Ejecutar todas las conciliaciones</button>
                 </div>
                 <span id="tbEstado" class="text-xs text-slate-500" role="status" aria-live="polite"></span>
+                <p id="tbDiasC4Ayuda" class="basis-full text-xs text-slate-500" hidden>La tolerancia de días aplica solo a C4 (pagos del ERP contra el banco) y solo a este cierre: diferencia máxima entre la fecha del pago en el ERP y la del movimiento bancario. La política vigente es de <strong id="tbDiasC4Politica"></strong> días; las demás reglas usan su tolerancia del catálogo.</p>
               </div>
               <div id="tbCuerpo" class="mt-5">
                 <div id="tbVacio" class="rounded-xl border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-500 dark:border-slate-700" hidden></div>
@@ -1580,7 +1583,7 @@
     async function salir() {
       try { await sb.auth.signOut(); } catch (e) { /* sin red: igual se limpia la vista */ }
       st.usuario = null; st.meta = []; st.resumen = null; st.tabla = null; st.filtros = []; st.buscar = '';
-      alertasDatos = null; alertasTodas = false; resumenes = []; mostrar($('#dbResumenes'), false); $('#dbResumenHist').textContent = 'Ver historial'; $('#dbAlertasEmpresa').innerHTML = ''; mostrar($('#dbAlertasCard'), false); mostrar($('#dbAlertasBadge'), false); tb.datos = null; tb.sel = null; $('#tbEmpresa').innerHTML = ''; $('#tbCierreMes').value = ''; $('#tbEstado').textContent = '';
+      alertasDatos = null; alertasTodas = false; resumenes = []; mostrar($('#dbResumenes'), false); $('#dbResumenHist').textContent = 'Ver historial'; $('#dbAlertasEmpresa').innerHTML = ''; mostrar($('#dbAlertasCard'), false); mostrar($('#dbAlertasBadge'), false); tb.datos = null; tb.sel = null; $('#tbEmpresa').innerHTML = ''; $('#tbDiasC4').value = ''; $('#tbCierreMes').value = ''; $('#tbEstado').textContent = '';
       st.filas = []; st.total = 0; st.pagina = 0; st.ejecucion = null; st.estatusFiltro = null; st.revFiltro = null;
       $('#dbTbody').innerHTML = ''; $('#dbThead').innerHTML = ''; $('#c1Body').innerHTML = ''; $('#c1Resumen').innerHTML = '';
       mostrar($('#dbModal'), false);
@@ -2853,7 +2856,11 @@
       if (!emp) { mostrar($('#tbCard'), true); mostrar($('#tbDatos'), false); mostrar($('#tbVacio'), true); $('#tbVacio').textContent = 'Primero carga datos de una empresa.'; return; }
       mostrar($('#tbCard'), true);
       var editor = st.usuario && st.usuario.rol !== 'LECTOR';
-      mostrar($('#tbCierreBox'), !!editor);
+      mostrar($('#tbCierreBox'), !!editor); mostrar($('#tbDiasC4Ayuda'), !!editor);
+      var c4 = st.resumen && (st.resumen.reglas || []).filter(function (r) { return r.regla_codigo === 'C4'; })[0];
+      var pol = c4 && c4.tolerancia_dias != null ? Number(c4.tolerancia_dias) : null;
+      $('#tbDiasC4Politica').textContent = pol != null ? pol : '—';
+      if ($('#tbDiasC4').value === '' && pol != null) $('#tbDiasC4').value = pol;
       $('#tbCuerpo').classList.add('v-cargando');
       try { tb.datos = await api('tablero_iva', { empresa_id: emp, meses: 12 }); }
       catch (e) { $('#tbCuerpo').classList.remove('v-cargando'); return manejarError(e); }
@@ -2870,12 +2877,16 @@
     $('#tbCierre').addEventListener('click', async function () {
       var mes = $('#tbCierreMes').value;
       if (!/^\d{4}-\d{2}$/.test(mes)) return toast('Elige el mes a conciliar');
+      var diasTxt = $('#tbDiasC4').value.trim(), dias = diasTxt === '' ? null : Number(diasTxt);
+      if (dias != null && (!Number.isInteger(dias) || dias < 0 || dias > 60)) return toast('La tolerancia de días de C4 debe ser un entero entre 0 y 60');
+      var pol = Number($('#tbDiasC4Politica').textContent);
       var nombre = mesLargo(mes + '-01');
-      if (!confirm('Se ejecutarán las 10 conciliaciones de ' + nombre + ' en este orden:\nC1, C2, C3, C4, C6, C7, C8, C10, C5 y C9.\n\nCada regla usa las fuentes cargadas hasta hoy y los cruces de las anteriores. Las revisiones de partidas que no cambiaron se conservan.\n\n¿Continuar?')) return;
+      if (!confirm('Se ejecutarán las 10 conciliaciones de ' + nombre + ' en este orden:\nC1, C2, C3, C4, C6, C7, C8, C10, C5 y C9.\n\n' +
+        'C4 usará una tolerancia de ' + (dias != null ? dias : pol) + ' días' + (dias != null && dias !== pol ? ' (la política es de ' + pol + '; el cambio solo aplica a este cierre)' : '') + '.\n\nCada regla usa las fuentes cargadas hasta hoy y los cruces de las anteriores. Las revisiones de partidas que no cambiaron se conservan.\n\n¿Continuar?')) return;
       var b = this; b.disabled = true; b.textContent = 'Conciliando…';
       $('#tbEstado').textContent = 'Ejecutando las 10 conciliaciones de ' + nombre + '…';
       try {
-        var r = await api('ejecutar_cierre', { empresa_id: $('#tbEmpresa').value, mes: mes });
+        var r = await api('ejecutar_cierre', { empresa_id: $('#tbEmpresa').value, mes: mes, tolerancia_dias_c4: dias });
         var ok = r.corridas.reduce(function (a, c) { return a + Number(c.total_conciliadas); }, 0), tot = r.corridas.reduce(function (a, c) { return a + Number(c.total_partidas); }, 0);
         $('#tbEstado').textContent = nombre + ': ' + r.corridas.length + ' conciliaciones ejecutadas (' + r.corridas.map(function (c) { return c.regla_codigo + ' #' + c.ejecucion_id; }).join(', ') + ') · ' + ok + ' de ' + tot + ' partidas conciliadas.';
         toast('Conciliaciones de ' + nombre + ' ejecutadas');
