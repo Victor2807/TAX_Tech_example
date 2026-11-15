@@ -66,6 +66,25 @@
     .viz-root .v-key { display: inline-block; width: 12px; height: 2px; border-radius: 1px; vertical-align: middle; margin-right: 6px; }
     .viz-root .v-bar { border-radius: 0 4px 4px 0; }
     .viz-root .v-cargando { opacity: .55; transition: opacity .15s; }
+    /* PDF del tablero: se imprime solo una copia del tablero, en claro y con su encabezado */
+    #zonaImpresion { display: none; }
+    @media print {
+      @page { size: letter; margin: 12mm; }
+      body.imp-tablero > *:not(#zonaImpresion) { display: none !important; }
+      body.imp-tablero { background: #ffffff !important; }
+      body.imp-tablero #zonaImpresion { display: block; color: #0f172a; font-size: 11px; }
+      #zonaImpresion .no-imprimir, #zonaImpresion .v-tip { display: none !important; }
+      #zonaImpresion section { border: 0 !important; padding: 0 !important; box-shadow: none !important; }
+      #zonaImpresion svg { width: 100% !important; height: auto !important; }
+      #zonaImpresion figure, #zonaImpresion table tr, #zonaImpresion #tbHero, #zonaImpresion #tbKpis > div { break-inside: avoid; }
+      #zonaImpresion .imp-salto { break-before: page; }
+      #zonaImpresion details > summary { display: none; }
+      #zonaImpresion .overflow-x-auto { overflow: visible !important; }
+      #zonaImpresion table { min-width: 0 !important; width: 100% !important; font-size: 8.5px; }
+      #zonaImpresion table th, #zonaImpresion table td { padding-right: 6px !important; }
+      #zonaImpresion .imp-titulo { display: block !important; }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
     :root[data-theme="dark"] { --bg: #020617; --fg: #e2e8f0; color-scheme: dark; }
     :root.dark { --bg: #020617; --fg: #e2e8f0; color-scheme: dark; }
     :root:not(.dark) { --bg: #ffffff; --fg: #1e293b; color-scheme: light; }
@@ -448,7 +467,7 @@
           <!-- Tablero de IVA -->
           <div id="tab-tablero" class="db-panel mt-6 space-y-6" hidden>
             <section id="tbCard" class="viz-root relative min-w-0 rounded-2xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-950" aria-labelledby="tbTitulo">
-              <div class="flex flex-wrap items-start gap-x-4 gap-y-2">
+              <div class="no-imprimir flex flex-wrap items-start gap-x-4 gap-y-2">
                 <div class="min-w-0 flex-1">
                   <h3 id="tbTitulo" class="font-semibold text-slate-900 dark:text-white">Tablero ejecutivo de IVA</h3>
                   <p class="mt-0.5 text-xs text-slate-500">Determinación mensual en flujo de efectivo con todas las fuentes cargadas (CFDI, ERP, bancos y Data Stage), según la última ejecución de cada conciliación.</p>
@@ -457,17 +476,21 @@
               <div class="mt-4 flex flex-wrap items-end gap-3">
                 <div id="tbEmpresaBox" hidden><label for="tbEmpresa" class="block text-xs font-medium text-slate-500">Empresa</label>
                   <select id="tbEmpresa" class="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></select></div>
+                <div class="no-imprimir order-last flex gap-2 sm:order-none" id="tbExportar" hidden>
+                  <button id="tbExcel" type="button" class="rounded-lg border border-emerald-600/40 px-3 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-60 dark:text-emerald-300 dark:hover:bg-emerald-500/10">Exportar a Excel</button>
+                  <button id="tbPdf" type="button" class="rounded-lg border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-60 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800" title="Abre la impresión del tablero: elige Guardar como PDF">Exportar a PDF</button>
+                </div>
                 <div><label for="tbMes" class="block text-xs font-medium text-slate-500">Mes</label>
                   <select id="tbMes" class="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900"></select></div>
-                <div id="tbCierreBox" class="flex flex-wrap items-end gap-2" hidden>
+                <div id="tbCierreBox" class="no-imprimir flex flex-wrap items-end gap-2" hidden>
                   <div><label for="tbCierreMes" class="block text-xs font-medium text-slate-500">Mes a conciliar</label>
                     <input id="tbCierreMes" type="month" class="mt-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" /></div>
                   <div><label for="tbDiasC4" class="block text-xs font-medium text-slate-500">Tolerancia de días · solo C4</label>
                     <input id="tbDiasC4" type="number" min="0" max="60" step="1" inputmode="numeric" aria-describedby="tbDiasC4Ayuda" class="mt-1 w-28 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-900" /></div>
                   <button id="tbCierre" type="button" class="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-500 disabled:opacity-60" title="Ejecuta C1, C2, C3, C4, C6, C7, C8, C10, C5 y C9 del mes, en ese orden">Ejecutar todas las conciliaciones</button>
                 </div>
-                <span id="tbEstado" class="text-xs text-slate-500" role="status" aria-live="polite"></span>
-                <p id="tbDiasC4Ayuda" class="basis-full text-xs text-slate-500" hidden>La tolerancia de días aplica solo a C4 (pagos del ERP contra el banco) y solo a este cierre: diferencia máxima entre la fecha del pago en el ERP y la del movimiento bancario. La política vigente es de <strong id="tbDiasC4Politica"></strong> días; las demás reglas usan su tolerancia del catálogo.</p>
+                <span id="tbEstado" class="no-imprimir text-xs text-slate-500" role="status" aria-live="polite"></span>
+                <p id="tbDiasC4Ayuda" class="no-imprimir basis-full text-xs text-slate-500" hidden>La tolerancia de días aplica solo a C4 (pagos del ERP contra el banco) y solo a este cierre: diferencia máxima entre la fecha del pago en el ERP y la del movimiento bancario. La política vigente es de <strong id="tbDiasC4Politica"></strong> días; las demás reglas usan su tolerancia del catálogo.</p>
               </div>
               <div id="tbCuerpo" class="mt-5">
                 <div id="tbVacio" class="rounded-xl border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-500 dark:border-slate-700" hidden></div>
@@ -485,7 +508,7 @@
                     </figure>
                     <figure class="min-w-0">
                       <figcaption><span class="text-sm font-semibold text-slate-900 dark:text-white">Saldo de IVA por mes y su variación</span>
-                        <span class="block text-xs text-slate-500">Arriba del cero, a cargo; abajo, a favor. El tooltip da la variación contra el mes anterior.</span></figcaption>
+                        <span class="block text-xs text-slate-500">Arriba del cero, a cargo; abajo, a favor.<span class="no-imprimir"> El tooltip da la variación contra el mes anterior.</span></span></figcaption>
                       <div id="tbLeyenda2" class="mt-2 flex flex-wrap gap-4 text-xs text-slate-600 dark:text-slate-400"></div>
                       <div id="tbGrafSaldo" class="v-chart relative mt-2" tabindex="0" role="img"></div>
                     </figure>
@@ -502,6 +525,7 @@
                   </div>
                   <details class="mt-6 text-sm">
                     <summary class="cursor-pointer text-xs font-medium text-brand-700 hover:underline dark:text-brand-300">Ver tabla de datos por mes</summary>
+                    <div class="imp-titulo mt-2 text-sm font-semibold" style="display:none">Datos por mes (pesos)</div>
                     <div id="tbTabla" class="mt-3 overflow-x-auto"></div>
                   </details>
                 </div>
@@ -2796,7 +2820,7 @@
 
     function pintarTablero() {
       var d = tb.datos, meses = (d && d.meses) || [];
-      mostrar($('#tbVacio'), !meses.length); mostrar($('#tbDatos'), meses.length > 0);
+      mostrar($('#tbVacio'), !meses.length); mostrar($('#tbDatos'), meses.length > 0); mostrar($('#tbExportar'), meses.length > 0);
       if (!meses.length) {
         $('#tbVacio').textContent = 'Todavía no hay una determinación de IVA para esta empresa: elige el mes y ejecuta todas las conciliaciones.';
         $('#tbMes').innerHTML = ''; return;
@@ -2873,6 +2897,149 @@
       pintarTablero();
     }
     $('#tbMes').addEventListener('change', function () { tb.sel = this.value; pintarTablero(); });
+
+    // Datos comunes de las exportaciones del tablero
+    function contextoTablero() {
+      var meses = (tb.datos && tb.datos.meses) || [];
+      var i = meses.findIndex(function (x) { return x.periodo_desde === tb.sel; });
+      var emp = (st.resumen.empresas || []).filter(function (e) { return String(e.empresa_id) === String($('#tbEmpresa').value); })[0] || {};
+      return { meses: meses, i: i, x: meses[i], p: i > 0 ? meses[i - 1] : null, emp: emp, mes: String(tb.sel).slice(0, 7) };
+    }
+
+    /* Excel: determinación del mes con fórmulas, histórico con variaciones, no acreditado y riesgo */
+    $('#tbExcel').addEventListener('click', async function () {
+      var c = contextoTablero(); if (!c.x) return;
+      var btn = this; btn.disabled = true; btn.textContent = 'Generando…';
+      try {
+        await cargarXLSX();
+        var X = window.XLSX, wb = X.utils.book_new(), x = c.x, p = c.p, Z = '#,##0.00;[Red]-#,##0.00';
+        var n = function (v) { return v == null ? null : Number(v); };
+        var etqSaldo = Number(x.saldo) < 0 ? 'IVA a favor' : Number(x.saldo) > 0 ? 'IVA a cargo' : 'IVA en cero';
+        // 1. Determinación del mes (columna B: mes; C: mes anterior; D: variación)
+        var filas = [
+          ['IVA trasladado (facturado en el mes)', 'trasladado'],
+          ['IVA cobrado', 'cobrado'],
+          ['IVA pendiente de cobro', 'pendiente_cobro'],
+          ['(-) IVA de notas de crédito emitidas', 'notas_emitidas'],
+          ['IVA acreditable nacional', 'acreditable_nacional'],
+          ['IVA acreditable de importación', 'acreditable_importacion'],
+          ['(-) IVA de notas de crédito recibidas', 'notas_recibidas'],
+          ['IVA acreditable', 'acreditable'],
+          ['IVA pagado', 'pagado'],
+          ['IVA pendiente de pago', 'pendiente_pago'],
+          ['Saldo de IVA (+ a cargo, - a favor)', 'saldo'],
+          ['IVA retenido a enterar (se declara aparte)', 'retenido']
+        ];
+        var aoa = [
+          ['Tablero ejecutivo de IVA · determinación mensual en flujo de efectivo'],
+          ['Contribuyente', c.emp.razon_social || ''],
+          ['RFC', c.emp.rfc || ''],
+          ['Mes', mesLargo(x.periodo_desde)],
+          ['Origen', 'C5 #' + x.ejecucion_c5 + ' del ' + fechaHora(x.ejecutado_en) + ' · ' + x.reglas_ejecutadas + ' de 10 conciliaciones del mes'],
+          ['Resultado', etqSaldo + ' por ' + pesos(Math.abs(Number(x.saldo)))],
+          [],
+          ['Concepto', mesLargo(x.periodo_desde), p ? mesLargo(p.periodo_desde) : 'Mes anterior', 'Variación', 'Variación %']
+        ];
+        var r0 = aoa.length + 1;
+        filas.forEach(function (f) { aoa.push([f[0], n(x[f[1]]), p ? n(p[f[1]]) : null, null, null]); });
+        aoa.push([], ['Saldo = IVA cobrado - notas emitidas - IVA acreditable. IVA acreditable = nacional + importación - notas recibidas.'],
+                 ['Herramienta de apoyo: revisa las cifras antes de presentar la declaración.']);
+        var ws = X.utils.aoa_to_sheet(aoa);
+        var fila = function (k) { return r0 + filas.findIndex(function (f) { return f[1] === k; }); };
+        ['B', 'C'].forEach(function (col) {
+          if (col === 'C' && !p) return;
+          var o = col === 'B' ? x : p;
+          ws[col + fila('acreditable')] = { t: 'n', f: col + fila('acreditable_nacional') + '+' + col + fila('acreditable_importacion') + '-' + col + fila('notas_recibidas'), v: n(o.acreditable) };
+          ws[col + fila('saldo')] = { t: 'n', f: col + fila('cobrado') + '-' + col + fila('notas_emitidas') + '-' + col + fila('acreditable'), v: n(o.saldo) };
+        });
+        filas.forEach(function (f, k) {
+          var r = r0 + k;
+          ['B', 'C'].forEach(function (col) { if (ws[col + r]) ws[col + r].z = Z; });
+          if (p) {
+            ws['D' + r] = { t: 'n', f: 'B' + r + '-C' + r, v: Math.round((n(x[f[1]]) - n(p[f[1]])) * 100) / 100, z: Z };
+            if (n(p[f[1]])) ws['E' + r] = { t: 'n', f: '(B' + r + '-C' + r + ')/ABS(C' + r + ')', v: (n(x[f[1]]) - n(p[f[1]])) / Math.abs(n(p[f[1]])), z: '0.0%;[Red]-0.0%' };
+          }
+        });
+        ws['!cols'] = [{ wch: 44 }, { wch: 18 }, { wch: 18 }, { wch: 15 }, { wch: 12 }];
+        X.utils.book_append_sheet(wb, ws, 'Determinación');
+
+        // 2. Histórico por mes con variación del saldo
+        var cols = [['Trasladado', 'trasladado'], ['Cobrado', 'cobrado'], ['Pendiente de cobro', 'pendiente_cobro'], ['Notas emitidas', 'notas_emitidas'],
+                    ['Pagado', 'pagado'], ['Pendiente de pago', 'pendiente_pago'], ['Acreditable', 'acreditable'], ['Notas recibidas', 'notas_recibidas'],
+                    ['Saldo (+ cargo / - favor)', 'saldo'], ['Retenido', 'retenido']];
+        var hist = c.meses.map(function (m, k) {
+          var prev = k > 0 ? c.meses[k - 1] : null;
+          var dv = prev ? Number(m.saldo) - Number(prev.saldo) : null;
+          return [mesLargo(m.periodo_desde)].concat(cols.map(function (cc) { return n(m[cc[1]]); }))
+            .concat([dv == null ? null : Math.round(dv * 100) / 100, prev && Number(prev.saldo) ? dv / Math.abs(Number(prev.saldo)) : null, Number(m.saldo) < 0 ? 'A favor' : Number(m.saldo) > 0 ? 'A cargo' : 'En cero']);
+        });
+        var wh = hojaTabla(X, 'Histórico mensual de IVA · ' + (c.emp.razon_social || '') + ' · ' + (c.emp.rfc || ''),
+          ['Mes'].concat(cols.map(function (cc) { return cc[0]; })).concat(['Variación del saldo', 'Variación %', 'Resultado']), hist,
+          { dinero: ['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'], anchos: [20, 14, 14, 16, 14, 14, 16, 14, 14, 20, 12, 18, 12, 10],
+            nota: 'Variación del saldo contra el mes anterior: positiva = más a cargo o menos a favor; negativa = menos a cargo o más a favor.' });
+        hist.forEach(function (h, k) { var cel = wh['M' + (4 + k)]; if (cel && cel.t === 'n') cel.z = '0.0%;[Red]-0.0%'; });
+        X.utils.book_append_sheet(wb, wh, 'Histórico');
+
+        // 3. IVA no acreditado por causa (mes)
+        X.utils.book_append_sheet(wb, hojaTabla(X, 'IVA que no se acreditó en ' + mesLargo(x.periodo_desde) + ', por causa',
+          ['Causa', 'Estatus C5', 'Partidas', 'IVA no acreditado'],
+          (x.no_acreditable || []).map(function (r) { return [CAUSA[r.estatus] || r.estatus, r.estatus, r.partidas, n(r.iva)]; }),
+          { dinero: ['D'], totales: ['C', 'D'], anchos: [34, 22, 10, 18], nota: 'IVA de C5 que queda fuera del acreditable del mes: se recupera atendiendo cada causa.' }), 'No acreditado');
+
+        // 4. Importe en riesgo por conciliación (mes)
+        X.utils.book_append_sheet(wb, hojaTabla(X, 'Importe en riesgo por conciliación · ' + mesLargo(x.periodo_desde),
+          ['Regla', 'Conciliación', 'Hallazgos', 'Importe en riesgo'],
+          (x.riesgo_por_regla || []).slice().sort(function (a, b) { return Number(b.importe_riesgo) - Number(a.importe_riesgo); })
+            .map(function (r) { return [r.regla, r.conciliacion, r.hallazgos, n(r.importe_riesgo)]; }),
+          { dinero: ['D'], totales: ['C', 'D'], anchos: [7, 44, 11, 18], nota: 'Hallazgos abiertos de la última ejecución de cada conciliación del mes; importe en pesos.' }), 'Riesgo por conciliación');
+
+        var nombre = 'tablero_iva_' + (c.emp.rfc || 'empresa') + '_' + c.mes + '.xlsx';
+        X.writeFile(wb, nombre);
+        toast('Excel descargado: ' + nombre);
+      } catch (e) { manejarError(e); }
+      finally { btn.disabled = false; btn.textContent = 'Exportar a Excel'; }
+    });
+
+    /* PDF: una copia del tablero en claro, con encabezado y la tabla de datos, y el diálogo de impresión */
+    var impTitulo = null, impOscuro = false;
+    function prepararPDF() {
+      var c = contextoTablero(); if (!c.x) return false;
+      var zona = $('#zonaImpresion');
+      if (!zona) { zona = document.createElement('div'); zona.id = 'zonaImpresion'; document.body.appendChild(zona); }
+      impOscuro = document.documentElement.classList.contains('dark');
+      document.documentElement.classList.remove('dark');
+      zona.innerHTML = '';
+      var enc = document.createElement('div'); enc.style.cssText = 'margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #e2e8f0';
+      var t1 = document.createElement('div'); t1.style.cssText = 'font-size:16px;font-weight:600'; t1.textContent = 'Tablero ejecutivo de IVA · ' + mesLargo(c.x.periodo_desde);
+      var t2 = document.createElement('div'); t2.style.cssText = 'margin-top:2px;color:#475569'; t2.textContent = (c.emp.razon_social || '') + ' · RFC ' + (c.emp.rfc || '');
+      var t3 = document.createElement('div'); t3.style.cssText = 'margin-top:2px;color:#64748b;font-size:10px';
+      t3.textContent = 'Generado el ' + fechaHora(new Date().toISOString()) + (st.usuario ? ' por ' + st.usuario.email : '') + ' · Determinación en flujo de efectivo según la última ejecución de cada conciliación. Herramienta de apoyo: revisa las cifras antes de presentar la declaración.';
+      enc.appendChild(t1); enc.appendChild(t2); enc.appendChild(t3); zona.appendChild(enc);
+      var copia = $('#tbCard').cloneNode(true);
+      copia.removeAttribute('id');
+      $$('[id]', copia).forEach(function (e) { e.setAttribute('data-id', e.id); e.removeAttribute('id'); });
+      $$('details', copia).forEach(function (d) { d.open = true; });
+      $$('select, input, button', copia).forEach(function (e) { var w = e.closest('div'); if (w && !w.closest('figure')) w.classList.add('no-imprimir'); });
+      zona.appendChild(copia);
+      document.body.classList.add('imp-tablero');
+      impTitulo = document.title; document.title = 'tablero_iva_' + (c.emp.rfc || 'empresa') + '_' + c.mes;
+      return true;
+    }
+    function restaurarPDF() {
+      if (impTitulo === null) return;
+      document.body.classList.remove('imp-tablero');
+      if (impOscuro) document.documentElement.classList.add('dark');
+      document.title = impTitulo; impTitulo = null;
+      var zona = $('#zonaImpresion'); if (zona) zona.innerHTML = '';
+    }
+    window.addEventListener('afterprint', restaurarPDF);
+    if (window.matchMedia) { var mqImp = window.matchMedia('print'); if (mqImp.addEventListener) mqImp.addEventListener('change', function (e) { if (!e.matches) setTimeout(restaurarPDF, 0); }); }
+    window.tbPrepararPDF = prepararPDF; window.tbRestaurarPDF = restaurarPDF;
+    $('#tbPdf').addEventListener('click', function () {
+      if (!prepararPDF()) return;
+      toast('En el diálogo de impresión elige "Guardar como PDF"');
+      setTimeout(function () { window.print(); }, 50);
+    });
     $('#tbEmpresa').addEventListener('change', function () { tb.sel = null; $('#tbCierreMes').value = ''; cargarTablero(); });
     $('#tbCierre').addEventListener('click', async function () {
       var mes = $('#tbCierreMes').value;
