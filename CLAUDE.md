@@ -12,7 +12,7 @@ Trabaja siempre en **español neutro**: respuestas, explicaciones, preguntas, co
 
 ## Qué es este repositorio
 
-Es la parte pública de **TAX Tech**, un proyecto de conciliación fiscal en México (CFDI ↔ ERP SAP ↔ estados de cuenta bancarios ↔ pedimentos del Data Stage del SAT, conciliaciones C1 a C10 e IVA mensual en flujo de efectivo). Solo contiene `index.html` (presentación del proyecto y panel de trabajo con sesión) y `README.md`.
+Es la parte pública de **TAX Tech**, un proyecto de conciliación fiscal en México (CFDI ↔ ERP SAP ↔ estados de cuenta bancarios ↔ pedimentos del Data Stage del SAT, conciliaciones C1 a C10 e IVA mensual en flujo de efectivo). Solo contiene `_index.html` (presentación del proyecto y panel de trabajo con sesión) y `README.md`.
 
 El esquema SQL, el motor de conciliación (funciones SQL), la Edge Function de Supabase, las migraciones y los scripts de carga están en un **repositorio privado aparte**. Por eso `.gitignore` excluye a propósito `db/`, `scripts/`, `supabase/` y `docs/modelo-er.*`. Nunca agregues aquí código del modelo de datos o del backend, ni datos fiscales o bancarios reales. Los datos de demostración son ficticios (octubre y noviembre de 2026).
 
@@ -20,7 +20,7 @@ El esquema SQL, el motor de conciliación (funciones SQL), la Edge Function de S
 
 ## Desarrollo
 
-No hay compilación, gestor de paquetes, linter ni pruebas. `index.html` es una sola página autocontenida que carga sus dependencias desde CDN:
+No hay compilación, gestor de paquetes, linter ni pruebas. `_index.html` es una sola página autocontenida que carga sus dependencias desde CDN:
 - Tailwind Play CDN (`cdn.tailwindcss.com/3.4.16`), configurado en línea (`darkMode: 'class'`, paleta `brand` esmeralda y `gold`).
 - three.js r128 (animación de la portada).
 - `@supabase/supabase-js@2.45.4` (autenticación).
@@ -28,7 +28,7 @@ No hay compilación, gestor de paquetes, linter ni pruebas. `index.html` es una 
 
 Para ejecutarla, abre el archivo en el navegador o sirve la carpeta (por ejemplo, `python -m http.server`). El panel se conecta al proyecto de Supabase en producción, así que para probarlo se necesita una cuenta dada de alta con un rol.
 
-## Estructura de `index.html`
+## Estructura de `_index.html`
 
 El archivo tiene unas 3,500 líneas, en este orden:
 1. **Encabezado**: un script temprano de tema (`localStorage['taxtech-theme']`, que evita el parpadeo de tema incorrecto), la configuración de Tailwind y un bloque `<style>` con las reglas `@media print` que usa la exportación a PDF del tablero de IVA.

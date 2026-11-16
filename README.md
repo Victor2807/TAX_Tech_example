@@ -9,7 +9,7 @@ Plataforma para automatizar la **conciliación de impuestos en México** (IVA, I
 
 El objetivo es encontrar diferencias antes de presentar declaraciones, sustentar el IVA acreditable y trasladado, dar seguimiento a los hallazgos mes a mes y dejar evidencia de auditoría para revisiones del SAT o el dictamen fiscal.
 
-> Este repositorio contiene la página pública (`index.html`) con la presentación del proyecto y el panel de trabajo. Los scripts de carga, la API, las migraciones y el modelo de datos están en un repositorio privado.
+> Este repositorio contiene la página pública (`_index.html`) con la presentación del proyecto y el panel de trabajo. Los scripts de carga, la API, las migraciones y el modelo de datos están en un repositorio privado.
 
 ---
 
@@ -92,7 +92,7 @@ Los papeles de trabajo incluyen una hoja **Hallazgos** con prioridad, importe en
           API privada (Supabase Edge Function, Deno)
         sesión + rol en cada petición · bitácora de cambios
                               ▼
-     index.html · Resumen · Tablero · Conciliar · Comparativo
+    _index.html · Resumen · Tablero · Conciliar · Comparativo
           Papeles de trabajo (Excel) · Tablero (PDF)
 ```
 
@@ -107,7 +107,7 @@ Los papeles de trabajo incluyen una hoja **Hallazgos** con prioridad, importe en
 
 | Repositorio | Contenido |
 |---|---|
-| `TAX_Tech_example` (este, público) | `index.html`: presentación del proyecto y panel de trabajo |
+| `TAX_Tech_example` (este, público) | `_index.html`: presentación del proyecto y panel de trabajo |
 | Privado | Migraciones SQL, modelo de datos, Edge Function, scripts de carga y generadores de datos de ejemplo |
 
 ---
