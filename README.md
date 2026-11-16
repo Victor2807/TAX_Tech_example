@@ -9,7 +9,7 @@ Plataforma para automatizar la **conciliación de impuestos en México** (IVA, I
 
 El objetivo es encontrar diferencias antes de presentar declaraciones, sustentar el IVA acreditable y trasladado, dar seguimiento a los hallazgos mes a mes y dejar evidencia de auditoría para revisiones del SAT o el dictamen fiscal.
 
-> Este repositorio contiene la página pública (`_index.html`) con la presentación del proyecto y el panel de trabajo. Los scripts de carga, la API, las migraciones y el modelo de datos están en un repositorio privado.
+> Este repositorio contiene la página pública (`_index.html`) con la presentación del proyecto y el panel de trabajo, y la app Android en [`mobile/`](mobile/README.md). Los scripts de carga, la API, las migraciones y el modelo de datos están en un repositorio privado.
 
 ---
 
@@ -32,7 +32,7 @@ El objetivo es encontrar diferencias antes de presentar declaraciones, sustentar
 | C1 | CFDI recibidos vs cuentas por pagar | CFDI ↔ ERP | UUID; si falta: RFC + fecha + importe |
 | C2 | CFDI emitidos vs ingresos | CFDI ↔ ERP | UUID; serie/folio; RFC + importe |
 | C3 | Pagos vs complementos de pago (REP) | ERP ↔ CFDI tipo P | UUID del documento relacionado + importe pagado |
-| C4 | Pagos del ERP vs banco | ERP ↔ Estado de cuenta | Importe + fecha (tolerancia de 10 días) + referencia |
+| C4 | Pagos del ERP vs banco | ERP ↔ Estado de cuenta | Importe + fecha (tolerancia de 10 días) + referencia. También cruza los traspasos entre cuentas propias registrados en pólizas, cuando la cuenta bancaria tiene ligada su cuenta de mayor |
 | C5 | IVA acreditable en flujo de efectivo | CFDI ↔ ERP ↔ Banco ↔ Pedimentos | Resultado de C1, C3, C4, C7 y C10 |
 | C6 | Pedimentos vs contabilidad | Data Stage ↔ ERP | Patente-aduana-número |
 | C7 | Pago de pedimentos vs banco | Data Stage (`510`) ↔ Estado de cuenta | Contribuciones + fecha de pago |
@@ -78,6 +78,12 @@ Los papeles de trabajo incluyen una hoja **Hallazgos** con prioridad, importe en
 
 ---
 
+## App móvil (Android)
+
+La carpeta [`mobile/`](mobile/README.md) contiene una app Android en Kotlin con Jetpack Compose, Material 3 y Navigation 3 (`minSdk` 24). Por ahora es la estructura base: todavía no inicia sesión ni muestra datos de conciliación. Igual que el panel, obtendrá todos los datos a través de la API privada (`conciliacion-api`) con la sesión y el rol del usuario. Las instrucciones para compilarla y probarla están en su [README](mobile/README.md).
+
+---
+
 ## Arquitectura
 
 ```
@@ -94,6 +100,7 @@ Los papeles de trabajo incluyen una hoja **Hallazgos** con prioridad, importe en
                               ▼
     _index.html · Resumen · Tablero · Conciliar · Comparativo
           Papeles de trabajo (Excel) · Tablero (PDF)
+              App Android (mobile/, en desarrollo)
 ```
 
 - **Base de datos:** PostgreSQL en Supabase. El esquema **no se publica** en la API pública de Supabase; tiene RLS activo y solo lo usa la función privada.
@@ -107,7 +114,7 @@ Los papeles de trabajo incluyen una hoja **Hallazgos** con prioridad, importe en
 
 | Repositorio | Contenido |
 |---|---|
-| `TAX_Tech_example` (este, público) | `_index.html`: presentación del proyecto y panel de trabajo |
+| `TAX_Tech_example` (este, público) | `_index.html`: presentación del proyecto y panel de trabajo · `mobile/`: app Android |
 | Privado | Migraciones SQL, modelo de datos, Edge Function, scripts de carga y generadores de datos de ejemplo |
 
 ---
