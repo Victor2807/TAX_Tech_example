@@ -70,7 +70,6 @@ import com.taxtech.mobile.ui.comun.VmBase
 import com.taxtech.mobile.ui.comun.entero
 import com.taxtech.mobile.ui.comun.fecha
 import com.taxtech.mobile.ui.comun.fechaHora
-import com.taxtech.mobile.ui.comun.nombreDeCorreo
 import com.taxtech.mobile.ui.comun.pesos
 import com.taxtech.mobile.ui.comun.severidad
 import com.taxtech.mobile.ui.panel.PanelViewModel
@@ -116,6 +115,13 @@ class ResumenViewModel(c: Contenedor) : VmBase(c) {
   }
 }
 
+/** Saludo según la hora del dispositivo. */
+private fun saludo(): String = when (java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)) {
+  in 5..11 -> "Buenos días"
+  in 12..18 -> "Buenas tardes"
+  else -> "Buenas noches"
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ResumenScreen(panel: PanelViewModel, ir: (Seccion) -> Unit) {
@@ -133,14 +139,14 @@ fun ResumenScreen(panel: PanelViewModel, ir: (Seccion) -> Unit) {
     LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 120.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
       item {
         Text(
-          "Hola, ${nombreDeCorreo(panel.usuario.email)}",
+          saludo(),
           style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onBackground,
           modifier = Modifier.padding(horizontal = 4.dp),
         )
       }
       if (p.error != null) item { AvisoError(p.error!!, reintentar = panel::cargarEmpresas) }
       if (!p.cargando && p.empresas.isEmpty() && p.error == null) {
-        item { Tarjeta { Vacio("Sin empresas asignadas", "Pide a un administrador que te asigne al menos una empresa en Accesos.", Iconos.Edificio) } }
+        item { Tarjeta { Vacio("Sin empresas asignadas", "Pide a un administrador que te asigne al menos una empresa en Accesos.", icono = Iconos.Edificio) } }
       }
       val r = p.resumen
       if (r == null && p.cargando) item { Cargando() }
@@ -319,7 +325,7 @@ private fun Ejecuciones(lista: List<Ejecucion>, abrir: (Ejecucion) -> Unit) {
   Tarjeta {
     TituloTarjeta("Últimas conciliaciones", "Toca una para ver sus resultados", Iconos.Cruce)
     if (lista.isEmpty()) {
-      Vacio("Aún no hay conciliaciones", "Ejecuta el cierre del mes desde el Tablero de IVA o una regla desde Conciliar.", Iconos.Cruce)
+      Vacio("Aún no hay conciliaciones", "Ejecuta el cierre del mes desde el Tablero de IVA o una regla desde Conciliar.", icono = Iconos.Cruce)
     }
     lista.take(5).forEach { e ->
       Spacer(Modifier.height(10.dp))

@@ -146,8 +146,7 @@ fun TableroScreen(panel: PanelViewModel) {
           Tarjeta {
             Vacio(
               "Sin determinación de IVA",
-              "Todavía no hay una determinación de IVA hasta ${mesLargo("$mes-01")} para esta empresa: ejecuta todas las conciliaciones del mes.",
-              Iconos.Grafica,
+              "Todavía no hay una determinación de IVA hasta ${mesLargo("$mes-01")} para esta empresa: ejecuta todas las conciliaciones del mes.", icono = Iconos.Grafica,
             )
           }
         }

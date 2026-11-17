@@ -72,7 +72,7 @@ class LoginViewModel(c: Contenedor) : VmBase(c) {
       e.email.isBlank() || e.contrasena.isEmpty() -> estado.update { it.copy(error = "Escribe tu correo y tu contraseña.") }
       else -> {
         estado.update { it.copy(cargando = true, error = null, servidor = servidor) }
-        lanzar(alFallar = { m -> estado.update { it.copy(error = m) } }, alTerminar = { estado.update { it.copy(cargando = false, contrasena = "") } }) {
+        lanzar(alFallar = { m -> estado.update { it.copy(error = m) } }, silenciarSesion = false, alTerminar = { estado.update { it.copy(cargando = false, contrasena = "") } }) {
           c.sesion.iniciar(servidor, e.email, e.contrasena)
         }
       }
@@ -174,8 +174,8 @@ fun LoginScreen(mensaje: String?) {
             )
             Spacer(Modifier.height(6.dp))
             Text(
-              "Emulador: ${ConfigApi.SERVIDOR_POR_OMISION} (la API local en 127.0.0.1:3001 de tu equipo). " +
-                "Celular por USB: ejecuta adb reverse tcp:3001 tcp:3001 y usa http://127.0.0.1:3001.",
+              "API local: ejecuta adb reverse tcp:3001 tcp:3001 y usa ${ConfigApi.SERVIDOR_POR_OMISION} " +
+                "(emulador o celular por USB). Otro servidor debe usar HTTPS.",
               style = MaterialTheme.typography.labelSmall,
               color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

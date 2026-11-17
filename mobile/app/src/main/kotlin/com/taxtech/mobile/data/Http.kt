@@ -16,8 +16,11 @@ import okio.BufferedSink
 import okio.source
 
 object ConfigApi {
-  /** La API local escucha en 127.0.0.1:3001 de la máquina de desarrollo; el emulador la ve como 10.0.2.2. */
-  const val SERVIDOR_POR_OMISION = "http://10.0.2.2:3001"
+  /**
+   * La API local escucha solo en 127.0.0.1:3001 de la máquina de desarrollo. Con
+   * `adb reverse tcp:3001 tcp:3001` el emulador o el celular por USB la ven en esa misma dirección.
+   */
+  const val SERVIDOR_POR_OMISION = "http://127.0.0.1:3001"
   const val PREFIJO = "/api"
   /** Código del 403 que devuelve la API mientras el usuario debe cambiar su contraseña. */
   const val CODIGO_CAMBIAR_CONTRASENA = "CAMBIAR_CONTRASENA"

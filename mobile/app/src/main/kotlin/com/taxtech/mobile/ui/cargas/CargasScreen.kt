@@ -288,7 +288,7 @@ fun CargasScreen(panel: PanelViewModel) {
       }
       if (e.error != null) item { AvisoError(e.error!!) { vm.cargarHistorial(forzar = true) } }
       if (e.cargandoHistorial && e.historial.isEmpty()) item { Cargando() }
-      if (!e.cargandoHistorial && historial.isEmpty() && e.error == null) item { Tarjeta { Vacio("Sin cargas", "Aún no hay archivos cargados para esta empresa con este filtro.", Iconos.Archivo) } }
+      if (!e.cargandoHistorial && historial.isEmpty() && e.error == null) item { Tarjeta { Vacio("Sin cargas", "Aún no hay archivos cargados para esta empresa con este filtro.", icono = Iconos.Archivo) } }
       items(historial, key = { it.id }) { cg -> NodoCarga(cg, cg == historial.last()) }
     }
   }

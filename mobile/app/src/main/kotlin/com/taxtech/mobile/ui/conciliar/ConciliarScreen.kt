@@ -143,7 +143,7 @@ fun ConciliarScreen(panel: PanelViewModel) {
             }
           }
         }
-        if (e.visibles.isEmpty()) item { Tarjeta { Vacio("Sin resultados", "No hay partidas con este filtro.", Iconos.Filtro) } }
+        if (e.visibles.isEmpty()) item { Tarjeta { Vacio("Sin resultados", "No hay partidas con este filtro.", icono = Iconos.Filtro) } }
         items(e.visibles, key = { it.idResultado() }) { f ->
           TarjetaPartida(
             f, ej.regla, editor,
@@ -159,8 +159,7 @@ fun ConciliarScreen(panel: PanelViewModel) {
           Tarjeta {
             Vacio(
               "Sin ejecución en el mes",
-              "${e.regla} no se ha ejecutado en el mes activo. " + if (editor) "Ejecútala arriba o elige una ejecución anterior." else "Elige una ejecución anterior.",
-              Iconos.Cruce,
+              "${e.regla} no se ha ejecutado en el mes activo. " + if (editor) "Ejecútala arriba o elige una ejecución anterior." else "Elige una ejecución anterior.", icono = Iconos.Cruce,
             )
           }
         }
@@ -441,7 +440,7 @@ private fun Filtros(
       item { Filtro("Todos · ${filas.size}", estatus == null) { alEstatus(null) } }
       items(cuenta.keys.toList()) { s ->
         val info = infoEstatus(s)
-        Filtro("$s · ${cuenta[s]}", estatus == s, info.color) { alEstatus(if (estatus == s) null else s) }
+        Filtro("$s · ${cuenta[s]}", estatus == s, info.color, mono = true) { alEstatus(if (estatus == s) null else s) }
       }
     }
     LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -454,10 +453,10 @@ private fun Filtros(
 }
 
 @Composable
-private fun Filtro(texto: String, activo: Boolean, color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primary, onClick: () -> Unit) {
+private fun Filtro(texto: String, activo: Boolean, color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primary, mono: Boolean = false, onClick: () -> Unit) {
   Text(
     texto,
-    style = MaterialTheme.typography.labelMedium.merge(Mono),
+    style = if (mono) MaterialTheme.typography.labelMedium.merge(Mono) else MaterialTheme.typography.labelMedium,
     color = if (activo) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
     modifier = Modifier.clip(CircleShape)
       .background(if (activo) color.copy(alpha = 0.22f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))

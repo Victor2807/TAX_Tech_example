@@ -113,7 +113,7 @@ fun AccesosScreen(panel: PanelViewModel) {
       if (!yo.rol.esAdmin) {
         item {
           Tarjeta {
-            Vacio("Administración de accesos", "Solo un Admin da de alta usuarios, empresas y grupos, y consulta la bitácora. Si necesitas otra empresa o perfil, pídeselo a un administrador.", Iconos.Escudo)
+            Vacio("Administración de accesos", "Solo un Admin da de alta usuarios, empresas y grupos, y consulta la bitácora. Si necesitas otra empresa o perfil, pídeselo a un administrador.", icono = Iconos.Escudo)
           }
         }
         return@LazyColumn
@@ -183,7 +183,7 @@ fun AccesosScreen(panel: PanelViewModel) {
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 4.dp),
               )
             }
-            if (d.grupos.isEmpty()) item { Tarjeta { Vacio("Sin grupos", "Crea un grupo para reunir empresas del mismo corporativo.", Iconos.Edificio) } }
+            if (d.grupos.isEmpty()) item { Tarjeta { Vacio("Sin grupos", "Crea un grupo para reunir empresas del mismo corporativo.", icono = Iconos.Edificio) } }
             items(d.grupos, key = { it.id }) { g ->
               Tarjeta(relleno = PaddingValues(14.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

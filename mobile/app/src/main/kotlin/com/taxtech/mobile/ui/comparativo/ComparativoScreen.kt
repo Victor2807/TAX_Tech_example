@@ -134,7 +134,7 @@ fun ComparativoScreen(panel: PanelViewModel) {
       val d = e.datos
       if (d == null && e.cargando) item { Cargando() }
       if (d != null && d.periodos.isEmpty()) {
-        item { Tarjeta { Vacio("Sin conciliaciones", "Todavía no hay conciliaciones ejecutadas hasta ${mesLargo("$mes-01")}.", Iconos.Balanza) } }
+        item { Tarjeta { Vacio("Sin conciliaciones", "Todavía no hay conciliaciones ejecutadas hasta ${mesLargo("$mes-01")}.", icono = Iconos.Balanza) } }
       }
       if (d != null && d.periodos.isNotEmpty()) {
         item {
@@ -182,11 +182,14 @@ private fun TarjetaMes(per: PeriodoComparativo, maximo: Double, activo: Boolean,
     Text("Riesgo abierto ${pesos(per.riesgoAbierto)}", style = MaterialTheme.typography.labelSmall.merge(Cifras), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
     if (!sinCorte) {
       Spacer(Modifier.height(8.dp))
-      Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Mini("Al corte", "${per.alCorte}")
-        Mini("Cerrados", "${per.cerrados}", colores.exito)
-        Mini("Cambiaron", "${per.cambiaron}")
-        Mini("Nuevos", "${per.nuevos}", colores.peligro)
+      Row {
+        Mini("Al corte", "${per.alCorte}", Modifier.weight(1f))
+        Mini("Cerrados", "${per.cerrados}", Modifier.weight(1f), colores.exito)
+      }
+      Spacer(Modifier.height(6.dp))
+      Row {
+        Mini("Cambiaron", "${per.cambiaron}", Modifier.weight(1f))
+        Mini("Nuevos", "${per.nuevos}", Modifier.weight(1f), colores.peligro)
       }
     }
     if (sinCorte && editor) {
@@ -197,8 +200,8 @@ private fun TarjetaMes(per: PeriodoComparativo, maximo: Double, activo: Boolean,
 }
 
 @Composable
-private fun Mini(etiqueta: String, valor: String, color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface) {
-  Column {
+private fun Mini(etiqueta: String, valor: String, modifier: Modifier = Modifier, color: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSurface) {
+  Column(modifier) {
     Text(valor, style = MaterialTheme.typography.titleSmall.merge(Cifras), color = color)
     Text(etiqueta, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
   }
@@ -214,7 +217,7 @@ private fun PorRegla(d: Comparativo) {
       Column {
         Text("", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(vertical = 6.dp))
         d.porRegla.forEach { r ->
-          Row(Modifier.width(150.dp).height(44.dp), verticalAlignment = Alignment.CenterVertically) {
+          Row(Modifier.width(150.dp).height(58.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(r.regla, style = Mono.merge(MaterialTheme.typography.labelLarge), color = MaterialTheme.colorScheme.primary, modifier = Modifier.width(38.dp))
             Text(r.conciliacion, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)
           }
@@ -225,7 +228,7 @@ private fun PorRegla(d: Comparativo) {
           Text(mesCorto(per.desde), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(88.dp).padding(vertical = 6.dp), textAlign = TextAlign.End)
           d.porRegla.forEach { r ->
             val m = r.meses.firstOrNull { it.periodoDesde == per.desde }
-            Column(Modifier.width(88.dp).height(44.dp), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.Center) {
+            Column(Modifier.width(88.dp).height(58.dp), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.Center) {
               if (m == null || m.abiertos == 0L) Text("0", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f))
               else {
                 Text("${m.abiertos}", style = MaterialTheme.typography.bodyMedium.merge(Cifras).copy(fontWeight = FontWeight.SemiBold))

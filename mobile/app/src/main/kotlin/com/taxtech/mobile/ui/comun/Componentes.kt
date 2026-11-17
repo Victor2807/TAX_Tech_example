@@ -33,10 +33,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
@@ -85,8 +87,10 @@ fun FondoAurora(modifier: Modifier = Modifier, content: @Composable BoxScope.() 
       mancha(w * (1.0f - 0.3f * fase), h * (0.42f + 0.12f * fase), w * 0.8f, c.aurora2)
       mancha(w * (0.25f + 0.2f * fase), h * (1.0f - 0.18f * fase), w * 0.9f, c.aurora3)
     },
-    content = content,
-  )
+  ) {
+    // El fondo no es un Surface: sin esto, el texto sin color explícito saldría negro en modo oscuro
+    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onBackground) { content() }
+  }
 }
 
 /** Tarjeta translúcida con borde de luz. `acento` dibuja una franja de color a la izquierda. */
@@ -118,7 +122,7 @@ fun Tarjeta(
 
 /** Texto pequeño en mayúsculas sobre un título. */
 @Composable
-fun Ceja(texto: String, color: Color = MaterialTheme.colorScheme.primary, modifier: Modifier = Modifier) {
+fun Ceja(texto: String, modifier: Modifier = Modifier, color: Color = MaterialTheme.colorScheme.primary) {
   Text(texto.uppercase(), style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 1.4.sp), color = color, modifier = modifier)
 }
 
@@ -168,7 +172,7 @@ fun ChipEstatus(codigo: String?, modifier: Modifier = Modifier) {
 
 /** Cifra que se anima desde su valor anterior hasta el nuevo. */
 @Composable
-fun NumeroAnimado(valor: Double, formato: (Double) -> String, style: TextStyle, color: Color = Color.Unspecified, modifier: Modifier = Modifier) {
+fun NumeroAnimado(valor: Double, formato: (Double) -> String, style: TextStyle, modifier: Modifier = Modifier, color: Color = Color.Unspecified) {
   var mostrado by remember { mutableDoubleStateOf(0.0) }
   LaunchedEffect(valor) {
     val inicio = mostrado
@@ -243,7 +247,7 @@ fun Cargando(modifier: Modifier = Modifier, texto: String = "Cargando…") {
 
 /** Estado vacío con explicación y, si aplica, una acción. */
 @Composable
-fun Vacio(titulo: String, texto: String, icono: ImageVector = Iconos.Mosaico, modifier: Modifier = Modifier, accion: (@Composable () -> Unit)? = null) {
+fun Vacio(titulo: String, texto: String, modifier: Modifier = Modifier, icono: ImageVector = Iconos.Mosaico, accion: (@Composable () -> Unit)? = null) {
   Column(modifier.fillMaxWidth().padding(vertical = 28.dp, horizontal = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
     Box(Modifier.size(56.dp).clip(CircleShape).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)), contentAlignment = Alignment.Center) {
       Icon(icono, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(26.dp))

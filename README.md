@@ -80,7 +80,9 @@ Los papeles de trabajo incluyen una hoja **Hallazgos** con prioridad, importe en
 
 ## App móvil (Android)
 
-La carpeta [`mobile/`](mobile/README.md) contiene una app Android en Kotlin con Jetpack Compose, Material 3 y Navigation 3 (`minSdk` 24). Por ahora es la estructura base: todavía no inicia sesión ni muestra datos de conciliación. Igual que el panel, obtendrá todos los datos a través de la API privada (`conciliacion-api`) con la sesión y el rol del usuario. Las instrucciones para compilarla y probarla están en su [README](mobile/README.md).
+La carpeta [`mobile/`](mobile/README.md) contiene la app Android (Kotlin, Jetpack Compose y Material 3, `minSdk` 24). Lleva al celular el resumen con alertas, el tablero de IVA con el cierre mensual, las conciliaciones C1 a C10 con revisión individual y masiva, el comparativo, el explorador de tablas, la **carga de archivos** (CFDI, SAP, bancos y Data Stage, con simulación) y el control de accesos.
+
+A diferencia de este panel, la app consume la **API REST local** de la nueva plataforma (backend NestJS del repositorio privado, en `127.0.0.1:3001`), con su propio inicio de sesión y los mismos perfiles. Las exportaciones a Excel y PDF y los papeles de trabajo siguen en el panel web. Cómo conectarla, compilarla y probarla está en su [README](mobile/README.md).
 
 ---
 
@@ -100,7 +102,7 @@ La carpeta [`mobile/`](mobile/README.md) contiene una app Android en Kotlin con 
                               ▼
     _index.html · Resumen · Tablero · Conciliar · Comparativo
           Papeles de trabajo (Excel) · Tablero (PDF)
-              App Android (mobile/, en desarrollo)
+     App Android (mobile/) → API local de la nueva plataforma
 ```
 
 - **Base de datos:** PostgreSQL en Supabase. El esquema **no se publica** en la API pública de Supabase; tiene RLS activo y solo lo usa la función privada.
@@ -115,7 +117,7 @@ La carpeta [`mobile/`](mobile/README.md) contiene una app Android en Kotlin con 
 | Repositorio | Contenido |
 |---|---|
 | `TAX_Tech_example` (este, público) | `_index.html`: presentación del proyecto y panel de trabajo · `mobile/`: app Android |
-| Privado | Migraciones SQL, modelo de datos, Edge Function, scripts de carga y generadores de datos de ejemplo |
+| Privado | Migraciones SQL, modelo de datos, Edge Function, scripts de carga, generadores de datos de ejemplo y la nueva plataforma (`app/`: frontend, backend con la API local que usa la app móvil y base SQLite) |
 
 ---
 

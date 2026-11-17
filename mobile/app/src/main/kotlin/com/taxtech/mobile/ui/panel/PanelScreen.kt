@@ -63,6 +63,7 @@ import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -274,13 +275,13 @@ private fun Dock(seleccion: Seccion?, alElegir: (Seccion) -> Unit, alMas: () -> 
   val indice = seleccion?.let { items.indexOf(it) } ?: items.size
   BoxWithConstraints(
     modifier.widthIn(max = 520.dp).fillMaxWidth().height(66.dp).clip(RoundedCornerShape(26.dp))
-      .background(if (c.oscuro) Color(0xE60B1222) else Color(0xF2FFFFFF))
+      .background(if (c.oscuro) Color(0xFF0B1222) else Color.White)
       .border(1.dp, c.bordeVidrio, RoundedCornerShape(26.dp)),
   ) {
     val ancho = maxWidth / (items.size + 1)
     val x by animateDpAsState(ancho * indice, spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow), label = "dock")
     Box(
-      Modifier.offset(x = x).width(ancho).fillMaxHeight().padding(6.dp).clip(RoundedCornerShape(20.dp))
+      Modifier.offset { IntOffset(x.roundToPx(), 0) }.width(ancho).fillMaxHeight().padding(6.dp).clip(RoundedCornerShape(20.dp))
         .background(Brush.verticalGradient(listOf(MaterialTheme.colorScheme.primary.copy(alpha = 0.22f), MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)))),
     )
     Row(Modifier.fillMaxSize()) {

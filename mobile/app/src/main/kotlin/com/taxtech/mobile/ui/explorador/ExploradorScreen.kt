@@ -128,7 +128,7 @@ fun ExploradorScreen(panel: PanelViewModel) {
     }
     if (e.error != null) item { AvisoError(e.error!!, reintentar = vm::listar) }
     if (e.cargando && e.filas.isEmpty()) item { Cargando() }
-    if (!e.cargando && t != null && e.filas.isEmpty() && e.error == null) item { Tarjeta { Vacio("Sin registros", "No hay registros con estos filtros.", Iconos.Buscar) } }
+    if (!e.cargando && t != null && e.filas.isEmpty() && e.error == null) item { Tarjeta { Vacio("Sin registros", "No hay registros con estos filtros.", icono = Iconos.Buscar) } }
     if (t != null) {
       items(e.filas, key = { f -> t.llaves.joinToString("|") { k -> f[k].textoVisible().orEmpty() }.ifEmpty { f.hashCode().toString() } }) { f ->
         FilaRegistro(t, f) { detalle = f }

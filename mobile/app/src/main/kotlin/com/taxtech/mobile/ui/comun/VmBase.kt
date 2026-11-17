@@ -22,6 +22,8 @@ abstract class VmBase(protected val c: Contenedor) : ViewModel() {
 
   protected fun lanzar(
     alFallar: ((String) -> Unit)? = null,
+    /** false en el inicio de sesión: ahí un 401 es una contraseña incorrecta y sí se muestra. */
+    silenciarSesion: Boolean = true,
     alTerminar: (() -> Unit)? = null,
     bloque: suspend () -> Unit,
   ): Job = viewModelScope.launch {
@@ -30,7 +32,7 @@ abstract class VmBase(protected val c: Contenedor) : ViewModel() {
     } catch (e: CancellationException) {
       throw e
     } catch (e: ErrorApi) {
-      val silencioso = e.estado == 401 || (e.estado == 403 && e.codigo == ConfigApi.CODIGO_CAMBIAR_CONTRASENA)
+      val silencioso = (silenciarSesion && e.estado == 401) || (e.estado == 403 && e.codigo == ConfigApi.CODIGO_CAMBIAR_CONTRASENA)
       if (!silencioso) (alFallar ?: ::avisar)(e.message ?: "Error ${e.estado}")
     } catch (e: Exception) {
       (alFallar ?: ::avisar)("Respuesta inesperada de la API: ${e.message}")

@@ -1,6 +1,7 @@
 package com.taxtech.mobile.data
 
 import android.content.Context
+import androidx.core.content.edit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,10 +23,10 @@ interface AlmacenSesion {
 class AlmacenPreferencias(context: Context) : AlmacenSesion {
   private val prefs = context.getSharedPreferences("taxtech_sesion", Context.MODE_PRIVATE)
   override fun servidor() = prefs.getString("servidor", null) ?: ConfigApi.SERVIDOR_POR_OMISION
-  override fun guardarServidor(s: String) { prefs.edit().putString("servidor", s).apply() }
+  override fun guardarServidor(s: String) = prefs.edit { putString("servidor", s) }
   override fun token() = prefs.getString("token", null)
   override fun guardarToken(t: String?) {
-    prefs.edit().apply { if (t == null) remove("token") else putString("token", t) }.apply()
+    prefs.edit { if (t == null) remove("token") else putString("token", t) }
   }
 }
 

@@ -23,7 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -77,7 +77,7 @@ fun GraficaLineas(etiquetas: List<String>, series: List<Serie>, seleccionado: In
   val estiloEje = TextStyle(fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant).merge(Cifras)
   val superficie = MaterialTheme.colorScheme.surface
   val n = etiquetas.size
-  var dibujo by remember { mutableStateOf(0f) }
+  var dibujo by remember { mutableFloatStateOf(0f) }
   LaunchedEffect(series) { dibujo = 0f; dibujo = 1f }
   val avance by animateFloatAsState(dibujo, tween(1000, easing = FastOutSlowInEasing), label = "lineas")
   val todos = series.flatMap { it.valores }.ifEmpty { listOf(0.0) }
@@ -144,7 +144,7 @@ fun GraficaSaldo(etiquetas: List<String>, valores: List<Double>, seleccionado: I
   val estiloEje = TextStyle(fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant).merge(Cifras)
   val estiloValor = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface).merge(Cifras)
   val n = valores.size
-  var crecer by remember { mutableStateOf(0f) }
+  var crecer by remember { mutableFloatStateOf(0f) }
   LaunchedEffect(valores) { crecer = 0f; crecer = 1f }
   val avance by animateFloatAsState(crecer, tween(900, easing = FastOutSlowInEasing), label = "saldo")
   val marcas = marcasEje(valores.minOrNull() ?: 0.0, valores.maxOrNull() ?: 0.0)
@@ -202,7 +202,7 @@ fun BarrasOrdenadas(filas: List<FilaBarra>, vacio: String, modifier: Modifier = 
   val max = filas.maxOf { it.valor }.takeIf { it > 0 } ?: 1.0
   Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
     filas.forEach { f ->
-      var objetivo by remember(f) { mutableStateOf(0f) }
+      var objetivo by remember(f) { mutableFloatStateOf(0f) }
       LaunchedEffect(f) { objetivo = (f.valor / max).toFloat() }
       val frac by animateFloatAsState(objetivo, tween(800, easing = FastOutSlowInEasing), label = "barra")
       Column {
