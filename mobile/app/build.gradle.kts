@@ -77,6 +77,12 @@ dependencies {
   androidTestImplementation(libs.androidx.test.runner)
   androidTestImplementation(libs.androidx.test.espresso.core)
 
+  // JSON de la API (kotlinx.serialization)
+  implementation(libs.kotlinx.serialization.json)
+  // HTTP hacia la API local (PATCH, PUT, DELETE y multipart para las cargas)
+  implementation(libs.okhttp)
+  testImplementation(libs.okhttp.mockwebserver)
+
   // Navigation
   implementation(libs.androidx.navigation3.ui)
   implementation(libs.androidx.navigation3.runtime)

@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
-    <style name="Theme.TAXTech" parent="android:Theme.Material.Light.NoActionBar" />
+    <!-- Fondo oscuro mientras arranca Compose: evita el destello blanco antes de la portada -->
+    <style name="Theme.TAXTech" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/fondo_inicio</item>
+    </style>
 </resources>
