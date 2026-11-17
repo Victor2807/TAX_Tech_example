@@ -26,6 +26,16 @@ La empresa activa se elige en el encabezado (si el usuario tiene más de una) y 
 - Íconos de trazo propios (`ui/comun/Iconos.kt`), sin dependencia de una biblioteca de íconos.
 - Modo claro y oscuro según el sistema; los colores de las gráficas son los mismos del tablero web.
 
+### Ícono de la app
+
+Ícono «Cuatro fuentes»: CFDI, SAP, banco y Data Stage, con sus colores de la app, convergen en un nodo validado.
+
+- **Ícono adaptable (Android 8+):** fondo y motivo en capas vectoriales (`res/drawable/ic_launcher_background.xml` y `ic_launcher_foreground.xml`), para que el lanzador (One UI, Pixel…) le aplique su forma.
+- **Ícono temático (Android 13+):** capa monocroma `ic_launcher_monochrome.xml`.
+- **Android 7.x:** PNG en `res/mipmap-*` (cuadro redondeado y círculo).
+- **Tienda:** `app/src/main/ic_launcher-playstore.png` (512 × 512).
+- **Fuente única:** [`arte/generar_icono.py`](arte/generar_icono.py) define la geometría y genera todo lo anterior y el maestro [`arte/icono.svg`](arte/icono.svg). Para cambiar el ícono, edita el script y ejecuta `python arte/generar_icono.py` desde `mobile/`. Los PNG se dibujan con Microsoft Edge en modo headless; no requiere bibliotecas de Python.
+
 ## Conectar con la API local
 
 1. En el repositorio privado, arranca la API (`cd app && npm run dev`, ver `app/CLAUDE.md`). Escucha en `http://127.0.0.1:3001/api`.
